@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "dgSpecHash": "GJXT43AUP8A=",
+  "success": true,
+  "projectFilePath": "/Users/sergiovelez/BoricuaBite/backend/BoricuaBite.Api/BoricuaBite.Api.csproj",
+  "expectedPackageFiles": [
+    "/Users/sergiovelez/.nuget/packages/microsoft.aspnetcore.openapi/9.0.1/microsoft.aspnetcore.openapi.9.0.1.nupkg.sha512",
+    "/Users/sergiovelez/.nuget/packages/microsoft.openapi/1.6.17/microsoft.openapi.1.6.17.nupkg.sha512"
+  ],
+  "logs": []
+}

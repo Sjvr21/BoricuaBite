@@ -1,0 +1,6 @@
+@BoricuaBite.Api_HostAddress = http://localhost:5031
+
+GET {{BoricuaBite.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

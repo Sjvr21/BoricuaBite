@@ -1,0 +1,12 @@
+{
+  "Version": 1,
+  "Hash": "zJX2et8q8kp4SBfT+o1LNYJn3MxlnCkSBqR3ftn9KMU=",
+  "Source": "BoricuaBite.Api",
+  "BasePath": "_content/BoricuaBite.Api",
+  "Mode": "Default",
+  "ManifestType": "Build",
+  "ReferencedProjectsConfiguration": [],
+  "DiscoveryPatterns": [],
+  "Assets": [],
+  "Endpoints": []
+}
