@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("BoricuaBite.Api")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+148288ffc54b03a5140bd388ec5ac8b2ba11446b")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+be089a2fe8297dceb7b21c0dcc79be613126f820")]
 [assembly: System.Reflection.AssemblyProductAttribute("BoricuaBite.Api")]
 [assembly: System.Reflection.AssemblyTitleAttribute("BoricuaBite.Api")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
