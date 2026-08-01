@@ -1,0 +1,16 @@
+/Users/sergiovelez/BoricuaBite/backend/BoricuaBite.Application/bin/Debug/net9.0/BoricuaBite.Application.deps.json
+/Users/sergiovelez/BoricuaBite/backend/BoricuaBite.Application/bin/Debug/net9.0/BoricuaBite.Application.dll
+/Users/sergiovelez/BoricuaBite/backend/BoricuaBite.Application/bin/Debug/net9.0/BoricuaBite.Application.pdb
+/Users/sergiovelez/BoricuaBite/backend/BoricuaBite.Application/bin/Debug/net9.0/BoricuaBite.Domain.dll
+/Users/sergiovelez/BoricuaBite/backend/BoricuaBite.Application/bin/Debug/net9.0/BoricuaBite.Domain.pdb
+/Users/sergiovelez/BoricuaBite/backend/BoricuaBite.Application/obj/Debug/net9.0/BoricuaBite.Application.csproj.AssemblyReference.cache
+/Users/sergiovelez/BoricuaBite/backend/BoricuaBite.Application/obj/Debug/net9.0/BoricuaBite.Application.GeneratedMSBuildEditorConfig.editorconfig
+/Users/sergiovelez/BoricuaBite/backend/BoricuaBite.Application/obj/Debug/net9.0/BoricuaBite.Application.AssemblyInfoInputs.cache
+/Users/sergiovelez/BoricuaBite/backend/BoricuaBite.Application/obj/Debug/net9.0/BoricuaBite.Application.AssemblyInfo.cs
+/Users/sergiovelez/BoricuaBite/backend/BoricuaBite.Application/obj/Debug/net9.0/BoricuaBite.Application.csproj.CoreCompileInputs.cache
+/Users/sergiovelez/BoricuaBite/backend/BoricuaBite.Application/obj/Debug/net9.0/BoricuaBite.Application.sourcelink.json
+/Users/sergiovelez/BoricuaBite/backend/BoricuaBite.Application/obj/Debug/net9.0/BoricuaB.43AFB88C.Up2Date
+/Users/sergiovelez/BoricuaBite/backend/BoricuaBite.Application/obj/Debug/net9.0/BoricuaBite.Application.dll
+/Users/sergiovelez/BoricuaBite/backend/BoricuaBite.Application/obj/Debug/net9.0/refint/BoricuaBite.Application.dll
+/Users/sergiovelez/BoricuaBite/backend/BoricuaBite.Application/obj/Debug/net9.0/BoricuaBite.Application.pdb
+/Users/sergiovelez/BoricuaBite/backend/BoricuaBite.Application/obj/Debug/net9.0/ref/BoricuaBite.Application.dll
