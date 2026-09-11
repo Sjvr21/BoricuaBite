@@ -23,6 +23,16 @@ public sealed class RestaurantService(BoricuaBiteDbContext db) : IRestaurantServ
         return restaurants.Select(ToResponse).ToArray();
     }
 
+    public async Task<IReadOnlyList<AdminRestaurantResponse>> ListAllForAdminAsync(CancellationToken cancellationToken)
+    {
+        var restaurants = await db.Restaurants.AsNoTracking()
+            .Join(db.Users.AsNoTracking(), r => r.OwnerId, u => (Guid?)u.Id, (r, u) => new { Restaurant = r, OwnerEmail = u.Email })
+            .OrderBy(x => x.Restaurant.Name)
+            .ToListAsync(cancellationToken);
+
+        return restaurants.Select(x => ToAdminResponse(x.Restaurant, x.OwnerEmail ?? string.Empty)).ToArray();
+    }
+
     public async Task<RestaurantResponse?> GetOwnedAsync(Guid ownerId, Guid restaurantId, CancellationToken cancellationToken)
     {
         var restaurant = await db.Restaurants.AsNoTracking()
@@ -52,6 +62,24 @@ public sealed class RestaurantService(BoricuaBiteDbContext db) : IRestaurantServ
         return ToResponse(restaurant);
     }
 
+    public async Task<AdminRestaurantResponse?> SetActiveAsync(Guid restaurantId, bool isActive, CancellationToken cancellationToken)
+    {
+        var restaurant = await db.Restaurants.SingleOrDefaultAsync(x => x.Id == restaurantId, cancellationToken);
+        if (restaurant is null || restaurant.OwnerId is null) return null;
+
+        restaurant.IsActive = isActive;
+        if (!isActive) restaurant.IsOpen = false;
+        restaurant.UpdatedAtUtc = DateTime.UtcNow;
+        await db.SaveChangesAsync(cancellationToken);
+
+        var ownerEmail = await db.Users.AsNoTracking()
+            .Where(x => x.Id == restaurant.OwnerId.Value)
+            .Select(x => x.Email)
+            .SingleAsync(cancellationToken);
+
+        return ToAdminResponse(restaurant, ownerEmail ?? string.Empty);
+    }
+
     private static void ApplyDetails(Restaurant restaurant, RestaurantDetails details)
     {
         restaurant.Name = details.Name.Trim();
@@ -63,4 +91,8 @@ public sealed class RestaurantService(BoricuaBiteDbContext db) : IRestaurantServ
     private static RestaurantResponse ToResponse(Restaurant restaurant) => new(
         restaurant.Id, restaurant.Name, restaurant.Description, restaurant.PhoneNumber,
         restaurant.Address, restaurant.IsOpen, restaurant.IsActive);
+
+    private static AdminRestaurantResponse ToAdminResponse(Restaurant restaurant, string ownerEmail) => new(
+        restaurant.Id, restaurant.Name, restaurant.Description, restaurant.PhoneNumber,
+        restaurant.Address, restaurant.IsOpen, restaurant.IsActive, ownerEmail);
 }
