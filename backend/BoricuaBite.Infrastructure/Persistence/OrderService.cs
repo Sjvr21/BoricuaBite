@@ -90,7 +90,8 @@ public sealed class OrderService(
 
         var orders = await query.OrderByDescending(x => x.CreatedAtUtc).ToListAsync(ct);
         var names = await RestaurantNames(orders.Select(x => x.RestaurantId), ct);
-        var emails = await db.Users.AsNoTracking().Where(x => orders.Select(o => o.CustomerId).Contains(x.Id))
+        var customerIds = orders.Select(o => o.CustomerId).Distinct().ToArray();
+        var emails = await db.Users.AsNoTracking().Where(x => customerIds.Contains(x.Id))
             .ToDictionaryAsync(x => x.Id, x => x.Email, ct);
         return orders.Select(x => ToResponse(x, names.GetValueOrDefault(x.RestaurantId, "Restaurant"), emails.GetValueOrDefault(x.CustomerId))).ToArray();
     }
@@ -100,6 +101,19 @@ public sealed class OrderService(
         var order = await db.MarketplaceOrders.Include(x => x.Items)
             .SingleOrDefaultAsync(x => x.Id == orderId && db.Restaurants.Any(r => r.Id == x.RestaurantId && r.OwnerId == ownerId), ct);
         if (order is null) return null;
+
+        if (status == MarketplaceOrderStatus.Accepted && order.PaymentMethod == OrderPaymentMethod.Online && order.PaymentStatus != OrderPaymentStatus.Paid)
+            throw new InvalidOperationException("Online orders cannot be accepted until payment is confirmed.");
+
+        if (status is MarketplaceOrderStatus.Rejected or MarketplaceOrderStatus.Cancelled &&
+            order.PaymentMethod == OrderPaymentMethod.Online && order.PaymentStatus == OrderPaymentStatus.Paid)
+        {
+            if (string.IsNullOrWhiteSpace(order.StripePaymentIntentId))
+                throw new InvalidOperationException("This paid order is missing its Stripe payment reference and cannot be cancelled automatically.");
+            await checkoutProvider.RefundAsync(order.StripePaymentIntentId, ct);
+            order.MarkRefunded();
+        }
+
         order.TransitionTo(status);
         await db.SaveChangesAsync(ct);
         var restaurantName = await db.Restaurants.Where(x => x.Id == order.RestaurantId).Select(x => x.Name).SingleAsync(ct);
@@ -107,12 +121,12 @@ public sealed class OrderService(
         return ToResponse(order, restaurantName, email);
     }
 
-    public async Task<OrderResponse?> MarkPaidByCheckoutSessionAsync(string sessionId, CancellationToken ct)
+    public async Task<OrderResponse?> MarkPaidByCheckoutSessionAsync(string sessionId, string? paymentIntentId, CancellationToken ct)
     {
         var order = await db.MarketplaceOrders.Include(x => x.Items)
             .SingleOrDefaultAsync(x => x.StripeCheckoutSessionId == sessionId, ct);
         if (order is null) return null;
-        order.MarkPaid();
+        order.MarkPaid(paymentIntentId);
         await db.SaveChangesAsync(ct);
         var restaurantName = await db.Restaurants.Where(x => x.Id == order.RestaurantId).Select(x => x.Name).SingleAsync(ct);
         return ToResponse(order, restaurantName, null);
