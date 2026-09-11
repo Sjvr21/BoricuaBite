@@ -37,6 +37,13 @@ public static class AdminEndpoints
             var restaurant = await service.SetActiveAsync(id, state.IsActive, ct);
             return restaurant is null ? Results.NotFound() : Results.Ok(restaurant);
         });
+
+        group.MapPut("/restaurants/{id:guid}/subscription", async (Guid id, RestaurantSubscriptionUpdate update,
+            IRestaurantService service, CancellationToken ct) =>
+        {
+            var restaurant = await service.SetSubscriptionAsync(id, update, ct);
+            return restaurant is null ? Results.NotFound() : Results.Ok(restaurant);
+        });
     }
 }
 
