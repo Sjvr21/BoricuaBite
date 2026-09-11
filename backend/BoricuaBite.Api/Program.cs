@@ -32,13 +32,29 @@ builder.Services.Configure<BearerTokenOptions>(IdentityConstants.BearerScheme, o
     options.BearerTokenExpiration = TimeSpan.FromMinutes(15);
     options.RefreshTokenExpiration = TimeSpan.FromDays(7);
 });
-builder.Services.AddAuthorizationBuilder().AddPolicy("ApiBearer", policy =>
+
+var authorization = builder.Services.AddAuthorizationBuilder();
+authorization.AddPolicy("ApiBearer", policy =>
 {
     policy.AddAuthenticationSchemes(IdentityConstants.BearerScheme);
     policy.RequireAuthenticatedUser();
     policy.RequireAssertion(context => Guid.TryParse(
         context.User.FindFirstValue(ClaimTypes.NameIdentifier), out var id) && id != Guid.Empty);
 });
+authorization.AddPolicy("PlatformAdmin", policy =>
+{
+    policy.AddAuthenticationSchemes(IdentityConstants.BearerScheme);
+    policy.RequireAuthenticatedUser();
+    policy.RequireAssertion(context =>
+    {
+        var configuredAdmin = builder.Configuration["Admin:Email"];
+        var currentEmail = context.User.FindFirstValue(ClaimTypes.Email)
+            ?? context.User.FindFirstValue(ClaimTypes.Name);
+        return !string.IsNullOrWhiteSpace(configuredAdmin)
+            && string.Equals(configuredAdmin.Trim(), currentEmail, StringComparison.OrdinalIgnoreCase);
+    });
+});
+
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
@@ -64,12 +80,17 @@ app.UseRateLimiter();
 if (app.Environment.IsDevelopment()) app.MapOpenApi();
 
 app.MapGroup("/api/auth").RequireRateLimiting("authentication").MapIdentityApi<ApplicationUser>();
-app.MapGet("/api/account", async (ClaimsPrincipal principal, UserManager<ApplicationUser> users) =>
+app.MapGet("/api/account", async (ClaimsPrincipal principal, UserManager<ApplicationUser> users, IConfiguration configuration) =>
 {
     var user = await users.GetUserAsync(principal);
-    return user is null ? Results.Unauthorized() : Results.Ok(new { user.Id, user.Email });
+    if (user is null) return Results.Unauthorized();
+    var configuredAdmin = configuration["Admin:Email"];
+    var isAdmin = !string.IsNullOrWhiteSpace(configuredAdmin)
+        && string.Equals(configuredAdmin.Trim(), user.Email, StringComparison.OrdinalIgnoreCase);
+    return Results.Ok(new { user.Id, user.Email, IsAdmin = isAdmin });
 }).RequireAuthorization("ApiBearer");
 app.MapRestaurantEndpoints();
+app.MapAdminEndpoints();
 app.MapMenuEndpoints();
 app.MapCatalogEndpoints();
 
