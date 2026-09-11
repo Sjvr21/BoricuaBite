@@ -1,10 +1,14 @@
 using System.Security.Claims;
+using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
 using BoricuaBite.Api.Endpoints;
 using BoricuaBite.Application.Restaurants;
 using BoricuaBite.Application.Catalog;
 using BoricuaBite.Application.Menus;
+using BoricuaBite.Application.Orders;
+using BoricuaBite.Application.Reviews;
 using BoricuaBite.Infrastructure.Identity;
+using BoricuaBite.Infrastructure.Payments;
 using BoricuaBite.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authentication.BearerToken;
 using Microsoft.AspNetCore.Identity;
@@ -14,12 +18,18 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddOpenApi();
 builder.Services.AddProblemDetails();
+builder.Services.ConfigureHttpJsonOptions(options =>
+    options.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 builder.Services.AddDbContext<BoricuaBiteDbContext>(options => options.UseNpgsql(
     builder.Configuration.GetConnectionString("BoricuaBite")
         ?? throw new InvalidOperationException("Set ConnectionStrings:BoricuaBite with user-secrets or an environment variable.")));
+builder.Services.Configure<MarketplacePricingOptions>(builder.Configuration.GetSection(MarketplacePricingOptions.SectionName));
 builder.Services.AddScoped<IRestaurantService, RestaurantService>();
 builder.Services.AddScoped<IMenuService, MenuService>();
 builder.Services.AddScoped<ICatalogService, CatalogService>();
+builder.Services.AddScoped<IOrderService, OrderService>();
+builder.Services.AddScoped<IReviewService, ReviewService>();
+builder.Services.AddHttpClient<ICheckoutProvider, StripeCheckoutProvider>();
 builder.Services.AddIdentityApiEndpoints<ApplicationUser>(options =>
 {
     options.User.RequireUniqueEmail = true;
@@ -93,6 +103,9 @@ app.MapRestaurantEndpoints();
 app.MapAdminEndpoints();
 app.MapMenuEndpoints();
 app.MapCatalogEndpoints();
+app.MapOrderEndpoints();
+app.MapReviewEndpoints();
+app.MapStripeWebhookEndpoints();
 
 app.Run();
 
