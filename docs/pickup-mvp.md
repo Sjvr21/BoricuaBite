@@ -1,0 +1,34 @@
+# Restaurant pickup MVP
+
+The initial audience is restaurants and local food businesses. Customers collect
+orders at the business; there are no delivery addresses, drivers, or delivery fees.
+
+## Implemented domain foundation
+
+- Restaurant ownership references an account identifier; existing restaurants may
+  remain unassigned but cannot accept orders until an owner is assigned.
+- Menu items belong to one restaurant, with availability and USD prices.
+- Pickup orders snapshot item names and prices and calculate an item subtotal.
+- Orders require an open, active restaurant, a customer identifier, and available
+  items from that restaurant with positive quantities.
+- Status flow: Pending → Accepted → Preparing → ReadyForPickup → PickedUp.
+- Pending orders may be rejected or cancelled. Accepted orders may be cancelled.
+  Preparing orders cannot be cancelled in this initial domain policy.
+
+## Next implementation stages
+
+1. PostgreSQL persistence and ASP.NET Identity registration/login for customers
+   and business owners, including verified account ownership.
+2. Authorized restaurant and menu management endpoints. Derive acting account
+   identifiers from authentication; verify restaurant ownership on every write.
+3. Order endpoints that load current menu items from storage, calculate prices
+   on the server, enforce customer/owner permissions, and handle concurrent status
+   updates and duplicate submissions.
+4. Customer browsing, cart and order tracking; business onboarding and an order
+   dashboard in React.
+5. Decide pay-at-pickup versus online payment, then implement taxes, final totals,
+   payment handling where applicable, and notifications.
+
+Account identifiers in the domain are references, not authentication or permission
+checks. No account registration, database, or ordering API is implemented yet.
+Subtotal excludes taxes, tips, and fees and is not a final payment amount.
