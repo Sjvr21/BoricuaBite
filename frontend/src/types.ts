@@ -18,6 +18,10 @@ export type Restaurant = {
   logoUrl?: string | null
 }
 
+export type AdminRestaurant = Restaurant & {
+  ownerEmail: string
+}
+
 export type MenuItem = {
   id: string
   name: string
@@ -43,4 +47,5 @@ export type AuthResponse = {
 export type Account = {
   id: string
   email: string
+  isAdmin: boolean
 }
