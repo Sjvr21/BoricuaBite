@@ -87,6 +87,7 @@ public sealed class BoricuaBiteDbContext(DbContextOptions<BoricuaBiteDbContext> 
 
         var challenge = builder.Entity<LoginChallenge>();
         challenge.HasQueryFilter(x => !x.IsDeleted);
+        challenge.Property(x => x.CodeSalt).HasMaxLength(32).IsRequired();
         challenge.Property(x => x.CodeHash).HasMaxLength(64).IsRequired();
         challenge.HasIndex(x => new { x.UserId, x.ExpiresAtUtc });
         challenge.HasOne<ApplicationUser>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
