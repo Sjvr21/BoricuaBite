@@ -31,8 +31,15 @@ public static class RestaurantEndpoints
         group.MapPut("/{id:guid}/availability", async (Guid id, RestaurantAvailability availability,
             ClaimsPrincipal user, IRestaurantService service, CancellationToken ct) =>
         {
-            var restaurant = await service.SetAvailabilityAsync(OwnerId(user), id, availability.IsOpen, ct);
-            return restaurant is null ? Results.NotFound() : Results.Ok(restaurant);
+            try
+            {
+                var restaurant = await service.SetAvailabilityAsync(OwnerId(user), id, availability.IsOpen, ct);
+                return restaurant is null ? Results.NotFound() : Results.Ok(restaurant);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
         });
     }
 
