@@ -55,6 +55,8 @@ builder.Services.AddRateLimiter(options =>
 var app = builder.Build();
 app.UseExceptionHandler();
 app.UseHttpsRedirection();
+app.UseDefaultFiles();
+app.UseStaticFiles();
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseRateLimiter();
