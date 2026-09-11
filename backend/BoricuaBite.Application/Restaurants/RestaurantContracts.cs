@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using BoricuaBite.Domain.Entities;
 using BoricuaBite.Domain.ValueObjects;
 
 namespace BoricuaBite.Application.Restaurants;
@@ -7,7 +8,9 @@ public sealed record RestaurantDetails(
     [property: Required, StringLength(150)] string Name,
     [property: Required, StringLength(2000)] string Description,
     [property: Required, StringLength(30)] string PhoneNumber,
-    [property: Required] PickupAddress Address);
+    [property: Required] PickupAddress Address,
+    [property: StringLength(2048)] string? LogoUrl = null,
+    [property: StringLength(2048)] string? CoverImageUrl = null);
 
 public sealed record PickupAddress(
     [property: Required, StringLength(200)] string AddressLine1,
@@ -22,13 +25,20 @@ public sealed record PickupAddress(
 }
 
 public sealed record RestaurantResponse(Guid Id, string Name, string Description,
-    string PhoneNumber, Address Address, bool IsOpen, bool IsActive);
+    string PhoneNumber, Address Address, string? LogoUrl, string? CoverImageUrl,
+    bool IsOpen, bool IsPublished, bool IsActive, RestaurantSubscriptionStatus SubscriptionStatus);
 
 public sealed record AdminRestaurantResponse(Guid Id, string Name, string Description,
-    string PhoneNumber, Address Address, bool IsOpen, bool IsActive, string OwnerEmail);
+    string PhoneNumber, Address Address, string? LogoUrl, string? CoverImageUrl,
+    bool IsOpen, bool IsPublished, bool IsActive, RestaurantSubscriptionStatus SubscriptionStatus,
+    string OwnerEmail, string? StripeConnectedAccountId, string? StripeSubscriptionId);
 
 public sealed record RestaurantAvailability(bool IsOpen);
 public sealed record RestaurantActiveState(bool IsActive);
+public sealed record RestaurantSubscriptionUpdate(
+    [property: Required] RestaurantSubscriptionStatus Status,
+    [property: StringLength(255)] string? StripeConnectedAccountId,
+    [property: StringLength(255)] string? StripeSubscriptionId);
 
 public interface IRestaurantService
 {
@@ -39,4 +49,5 @@ public interface IRestaurantService
     Task<RestaurantResponse?> UpdateAsync(Guid ownerId, Guid restaurantId, RestaurantDetails details, CancellationToken cancellationToken);
     Task<RestaurantResponse?> SetAvailabilityAsync(Guid ownerId, Guid restaurantId, bool isOpen, CancellationToken cancellationToken);
     Task<AdminRestaurantResponse?> SetActiveAsync(Guid restaurantId, bool isActive, CancellationToken cancellationToken);
+    Task<AdminRestaurantResponse?> SetSubscriptionAsync(Guid restaurantId, RestaurantSubscriptionUpdate update, CancellationToken cancellationToken);
 }
