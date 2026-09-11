@@ -59,7 +59,8 @@ public sealed class BoricuaBiteDbContext(DbContextOptions<BoricuaBiteDbContext> 
         order.Property(x => x.PaymentStatus).HasConversion<string>().HasMaxLength(32);
         order.Property(x => x.Subtotal).HasPrecision(12, 2);
         order.Property(x => x.TaxAmount).HasPrecision(12, 2);
-        order.Property(x => x.PlatformFee).HasPrecision(12, 2);
+        order.Property(x => x.ServiceFee).HasPrecision(12, 2);
+        order.Property(x => x.CommissionAmount).HasPrecision(12, 2);
         order.Property(x => x.Total).HasPrecision(12, 2);
         order.Property(x => x.Currency).HasMaxLength(3);
         order.Property(x => x.StripeCheckoutSessionId).HasMaxLength(255);
