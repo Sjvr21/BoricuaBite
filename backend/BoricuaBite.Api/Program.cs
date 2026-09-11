@@ -46,7 +46,10 @@ builder.Services.AddIdentityApiEndpoints<ApplicationUser>(options =>
     options.Lockout.MaxFailedAccessAttempts = 5;
     options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
 }).AddEntityFrameworkStores<BoricuaBiteDbContext>();
-builder.Services.AddScoped<IEmailSender<ApplicationUser>, IdentityEmailSender>();
+// MapIdentityApi resolves the email sender while endpoints are being mapped from the
+// root provider. The adapter has no scoped dependencies, so transient avoids resolving
+// a scoped service from the root container while still giving each use a fresh adapter.
+builder.Services.AddTransient<IEmailSender<ApplicationUser>, IdentityEmailSender>();
 builder.Services.Configure<BearerTokenOptions>(IdentityConstants.BearerScheme, options =>
 {
     options.BearerTokenExpiration = TimeSpan.FromMinutes(15);
