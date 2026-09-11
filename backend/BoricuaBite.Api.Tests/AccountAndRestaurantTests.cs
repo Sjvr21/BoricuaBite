@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using BoricuaBite.Application.Restaurants;
 using BoricuaBite.Domain.Entities;
 
@@ -10,6 +11,14 @@ namespace BoricuaBite.Api.Tests;
 public class AccountAndRestaurantTests
 {
     private const string Password = "LocalKitchen!12345";
+    private static readonly JsonSerializerOptions Json = CreateJsonOptions();
+
+    private static JsonSerializerOptions CreateJsonOptions()
+    {
+        var options = new JsonSerializerOptions(JsonSerializerDefaults.Web);
+        options.Converters.Add(new JsonStringEnumConverter());
+        return options;
+    }
 
     private static RestaurantDetails Details(string name = "Local Kitchen") => new(
         name, "Puerto Rican food for pickup", "787-555-0123",
@@ -34,7 +43,7 @@ public class AccountAndRestaurantTests
         await LoginAsync(admin, "admin@example.com");
         var response = await admin.PostAsJsonAsync("/api/admin/restaurants", new { ownerEmail, restaurant = Details() });
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-        return (await response.Content.ReadFromJsonAsync<RestaurantResponse>())!;
+        return (await response.Content.ReadFromJsonAsync<RestaurantResponse>(Json))!;
     }
 
     [Fact]
@@ -85,7 +94,7 @@ public class AccountAndRestaurantTests
 
         Assert.Equal(HttpStatusCode.OK,
             (await owner.PutAsJsonAsync($"/api/owner/restaurants/{restaurant.Id}/availability", new { isOpen = true })).StatusCode);
-        var owned = (await owner.GetFromJsonAsync<RestaurantResponse[]>($"/api/owner/restaurants"))!;
+        var owned = (await owner.GetFromJsonAsync<RestaurantResponse[]>($"/api/owner/restaurants", Json))!;
         Assert.True(Assert.Single(owned).IsOpen);
     }
 
