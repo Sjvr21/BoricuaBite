@@ -69,25 +69,37 @@ public sealed class MarketplaceOrder : BaseEntity
     public decimal EstimatedRestaurantProceeds => Money(Subtotal + TaxAmount - CommissionAmount);
     public string Currency { get; private set; } = "USD";
     public string? StripeCheckoutSessionId { get; private set; }
+    public string? StripePaymentIntentId { get; private set; }
     public IReadOnlyCollection<MarketplaceOrderItem> Items => items.AsReadOnly();
 
     public void AttachCheckoutSession(string sessionId)
     {
         if (PaymentMethod != OrderPaymentMethod.Online)
             throw new InvalidOperationException("Only online orders use checkout sessions.");
-        StripeCheckoutSessionId = string.IsNullOrWhiteSpace(sessionId) ? throw new ArgumentException("Session id is required.") : sessionId.Trim();
+        StripeCheckoutSessionId = string.IsNullOrWhiteSpace(sessionId)
+            ? throw new ArgumentException("Session id is required.")
+            : sessionId.Trim();
         UpdatedAtUtc = DateTime.UtcNow;
     }
 
-    public void MarkPaid()
+    public void MarkPaid(string? paymentIntentId = null)
     {
         PaymentStatus = OrderPaymentStatus.Paid;
+        if (!string.IsNullOrWhiteSpace(paymentIntentId)) StripePaymentIntentId = paymentIntentId.Trim();
         UpdatedAtUtc = DateTime.UtcNow;
     }
 
     public void MarkPaymentFailed()
     {
         PaymentStatus = OrderPaymentStatus.Failed;
+        UpdatedAtUtc = DateTime.UtcNow;
+    }
+
+    public void MarkRefunded()
+    {
+        if (PaymentStatus != OrderPaymentStatus.Paid)
+            throw new InvalidOperationException("Only paid orders can be refunded.");
+        PaymentStatus = OrderPaymentStatus.Refunded;
         UpdatedAtUtc = DateTime.UtcNow;
     }
 
