@@ -105,6 +105,7 @@ app.MapMenuEndpoints();
 app.MapCatalogEndpoints();
 app.MapOrderEndpoints();
 app.MapReviewEndpoints();
+app.MapMediaEndpoints();
 app.MapStripeWebhookEndpoints();
 
 app.Run();
