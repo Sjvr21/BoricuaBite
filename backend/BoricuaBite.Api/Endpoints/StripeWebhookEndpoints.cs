@@ -30,8 +30,11 @@ public static class StripeWebhookEndpoints
                 var session = root.GetProperty("data").GetProperty("object");
                 var paymentStatus = session.TryGetProperty("payment_status", out var status) ? status.GetString() : null;
                 var sessionId = session.GetProperty("id").GetString();
+                var paymentIntentId = session.TryGetProperty("payment_intent", out var paymentIntent) && paymentIntent.ValueKind == JsonValueKind.String
+                    ? paymentIntent.GetString()
+                    : null;
                 if (!string.IsNullOrWhiteSpace(sessionId) && paymentStatus == "paid")
-                    await orders.MarkPaidByCheckoutSessionAsync(sessionId, ct);
+                    await orders.MarkPaidByCheckoutSessionAsync(sessionId, paymentIntentId, ct);
             }
 
             return Results.Ok();
