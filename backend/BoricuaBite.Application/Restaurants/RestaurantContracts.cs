@@ -24,13 +24,19 @@ public sealed record PickupAddress(
 public sealed record RestaurantResponse(Guid Id, string Name, string Description,
     string PhoneNumber, Address Address, bool IsOpen, bool IsActive);
 
+public sealed record AdminRestaurantResponse(Guid Id, string Name, string Description,
+    string PhoneNumber, Address Address, bool IsOpen, bool IsActive, string OwnerEmail);
+
 public sealed record RestaurantAvailability(bool IsOpen);
+public sealed record RestaurantActiveState(bool IsActive);
 
 public interface IRestaurantService
 {
     Task<RestaurantResponse> CreateAsync(Guid ownerId, RestaurantDetails details, CancellationToken cancellationToken);
     Task<IReadOnlyList<RestaurantResponse>> ListOwnedAsync(Guid ownerId, CancellationToken cancellationToken);
+    Task<IReadOnlyList<AdminRestaurantResponse>> ListAllForAdminAsync(CancellationToken cancellationToken);
     Task<RestaurantResponse?> GetOwnedAsync(Guid ownerId, Guid restaurantId, CancellationToken cancellationToken);
     Task<RestaurantResponse?> UpdateAsync(Guid ownerId, Guid restaurantId, RestaurantDetails details, CancellationToken cancellationToken);
     Task<RestaurantResponse?> SetAvailabilityAsync(Guid ownerId, Guid restaurantId, bool isOpen, CancellationToken cancellationToken);
+    Task<AdminRestaurantResponse?> SetActiveAsync(Guid restaurantId, bool isActive, CancellationToken cancellationToken);
 }
