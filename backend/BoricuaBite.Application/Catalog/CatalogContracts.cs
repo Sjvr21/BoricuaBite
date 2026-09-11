@@ -5,7 +5,8 @@ using BoricuaBite.Domain.ValueObjects;
 namespace BoricuaBite.Application.Catalog;
 
 public sealed record PublicRestaurant(Guid Id, string Name, string Description,
-    string PhoneNumber, Address Address, string? LogoUrl, bool IsOpen);
+    string PhoneNumber, Address Address, string? LogoUrl, string? CoverImageUrl,
+    bool IsOpen, double AverageRating, int ReviewCount);
 
 public interface ICatalogService
 {
