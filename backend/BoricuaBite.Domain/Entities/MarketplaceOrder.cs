@@ -34,11 +34,13 @@ public sealed class MarketplaceOrder : BaseEntity
     private MarketplaceOrder() { }
 
     public MarketplaceOrder(Guid restaurantId, Guid customerId, OrderPaymentMethod paymentMethod,
-        decimal subtotal, decimal taxAmount, decimal platformFee, IEnumerable<MarketplaceOrderItem> orderItems)
+        decimal subtotal, decimal taxAmount, decimal serviceFee, decimal commissionAmount,
+        IEnumerable<MarketplaceOrderItem> orderItems)
     {
         if (restaurantId == Guid.Empty) throw new ArgumentException("Restaurant is required.", nameof(restaurantId));
         if (customerId == Guid.Empty) throw new ArgumentException("Customer is required.", nameof(customerId));
-        if (subtotal < 0 || taxAmount < 0 || platformFee < 0) throw new ArgumentOutOfRangeException(nameof(subtotal));
+        if (subtotal < 0 || taxAmount < 0 || serviceFee < 0 || commissionAmount < 0)
+            throw new ArgumentOutOfRangeException(nameof(subtotal));
 
         var snapshots = orderItems?.ToList() ?? throw new ArgumentNullException(nameof(orderItems));
         if (snapshots.Count == 0) throw new ArgumentException("An order must contain at least one item.", nameof(orderItems));
@@ -48,8 +50,9 @@ public sealed class MarketplaceOrder : BaseEntity
         PaymentMethod = paymentMethod;
         Subtotal = Money(subtotal);
         TaxAmount = Money(taxAmount);
-        PlatformFee = Money(platformFee);
-        Total = Money(Subtotal + TaxAmount + PlatformFee);
+        ServiceFee = Money(serviceFee);
+        CommissionAmount = Money(commissionAmount);
+        Total = Money(Subtotal + TaxAmount + ServiceFee);
         items.AddRange(snapshots);
     }
 
@@ -60,8 +63,10 @@ public sealed class MarketplaceOrder : BaseEntity
     public OrderPaymentStatus PaymentStatus { get; private set; } = OrderPaymentStatus.Pending;
     public decimal Subtotal { get; private set; }
     public decimal TaxAmount { get; private set; }
-    public decimal PlatformFee { get; private set; }
+    public decimal ServiceFee { get; private set; }
+    public decimal CommissionAmount { get; private set; }
     public decimal Total { get; private set; }
+    public decimal EstimatedRestaurantProceeds => Money(Subtotal + TaxAmount - CommissionAmount);
     public string Currency { get; private set; } = "USD";
     public string? StripeCheckoutSessionId { get; private set; }
     public IReadOnlyCollection<MarketplaceOrderItem> Items => items.AsReadOnly();
