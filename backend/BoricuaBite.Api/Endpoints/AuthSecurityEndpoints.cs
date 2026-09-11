@@ -20,8 +20,16 @@ public static class AuthSecurityEndpoints
             BoricuaBiteDbContext db, ITransactionalEmailSender email, IHostEnvironment environment, CancellationToken ct) =>
         {
             var user = await users.FindByEmailAsync(request.Email.Trim());
-            if (user is null || !await users.CheckPasswordAsync(user, request.Password))
+            if (user is null || await users.IsLockedOutAsync(user))
                 return Results.Unauthorized();
+
+            if (!await users.CheckPasswordAsync(user, request.Password))
+            {
+                await users.AccessFailedAsync(user);
+                return Results.Unauthorized();
+            }
+
+            await users.ResetAccessFailedCountAsync(user);
 
             var now = DateTime.UtcNow;
             var existing = await db.LoginChallenges.Where(x => x.UserId == user.Id && x.ConsumedAtUtc == null && x.ExpiresAtUtc > now).ToListAsync(ct);
@@ -67,7 +75,7 @@ public static class AuthSecurityEndpoints
 
             await db.SaveChangesAsync(ct);
             var user = await users.FindByIdAsync(challenge.UserId.ToString());
-            if (user is null) return Results.Unauthorized();
+            if (user is null || await users.IsLockedOutAsync(user)) return Results.Unauthorized();
             var principal = await signInManager.CreateUserPrincipalAsync(user);
             return Results.SignIn(principal, authenticationScheme: IdentityConstants.BearerScheme);
         });
@@ -101,6 +109,7 @@ public static class AuthSecurityEndpoints
                 if (!linked.Succeeded) return Results.ValidationProblem(linked.Errors.ToDictionary(x => x.Code, x => new[] { x.Description }));
             }
 
+            if (await users.IsLockedOutAsync(user)) return Results.Unauthorized();
             var principal = await signInManager.CreateUserPrincipalAsync(user);
             return Results.SignIn(principal, authenticationScheme: IdentityConstants.BearerScheme);
         });
