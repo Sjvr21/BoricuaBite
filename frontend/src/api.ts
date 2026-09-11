@@ -1,4 +1,4 @@
-import type { Account, AuthResponse, MenuItem, Page, Restaurant } from './types'
+import type { Account, AdminRestaurant, AuthResponse, MenuItem, Page, Restaurant } from './types'
 
 let accessToken = ''
 
@@ -22,20 +22,9 @@ async function request<T>(url: string, options: RequestInit = {}): Promise<T> {
 }
 
 export const api = {
-  register: (email: string, password: string) =>
-    request<void>('/api/auth/register', {
-      method: 'POST',
-      body: JSON.stringify({ email, password }),
-    }),
-
-  login: (email: string, password: string) =>
-    request<AuthResponse>('/api/auth/login?useCookies=false', {
-      method: 'POST',
-      body: JSON.stringify({ email, password }),
-    }),
-
+  register: (email: string, password: string) => request<void>('/api/auth/register', { method: 'POST', body: JSON.stringify({ email, password }) }),
+  login: (email: string, password: string) => request<AuthResponse>('/api/auth/login?useCookies=false', { method: 'POST', body: JSON.stringify({ email, password }) }),
   account: () => request<Account>('/api/account'),
-
   browseRestaurants: (search = '', city = '', isOpen?: boolean) => {
     const params = new URLSearchParams({ page: '1', pageSize: '50' })
     if (search.trim()) params.set('search', search.trim())
@@ -43,41 +32,17 @@ export const api = {
     if (isOpen !== undefined) params.set('isOpen', String(isOpen))
     return request<Page<Restaurant>>(`/api/restaurants?${params}`)
   },
-
-  publicMenu: (restaurantId: string) =>
-    request<Page<MenuItem>>(`/api/restaurants/${restaurantId}/menu?page=1&pageSize=100`),
-
+  publicMenu: (restaurantId: string) => request<Page<MenuItem>>(`/api/restaurants/${restaurantId}/menu?page=1&pageSize=100`),
   ownerRestaurants: () => request<Restaurant[]>('/api/owner/restaurants'),
+  setRestaurantAvailability: (restaurantId: string, isOpen: boolean) => request<Restaurant>(`/api/owner/restaurants/${restaurantId}/availability`, { method: 'PUT', body: JSON.stringify({ isOpen }) }),
+  ownerMenu: (restaurantId: string) => request<Page<MenuItem>>(`/api/owner/restaurants/${restaurantId}/menu-items?page=1&pageSize=100`),
+  createMenuItem: (restaurantId: string, name: string, price: number) => request<MenuItem>(`/api/owner/restaurants/${restaurantId}/menu-items`, { method: 'POST', body: JSON.stringify({ name, price }) }),
+  setMenuItemAvailability: (restaurantId: string, itemId: string, isAvailable: boolean) => request<MenuItem>(`/api/owner/restaurants/${restaurantId}/menu-items/${itemId}/availability`, { method: 'PUT', body: JSON.stringify({ isAvailable }) }),
+  deleteMenuItem: (restaurantId: string, itemId: string) => request<void>(`/api/owner/restaurants/${restaurantId}/menu-items/${itemId}`, { method: 'DELETE' }),
 
-  createRestaurant: (restaurant: Omit<Restaurant, 'id' | 'isOpen' | 'isActive' | 'logoUrl'>) =>
-    request<Restaurant>('/api/owner/restaurants', {
-      method: 'POST',
-      body: JSON.stringify(restaurant),
-    }),
-
-  setRestaurantAvailability: (restaurantId: string, isOpen: boolean) =>
-    request<Restaurant>(`/api/owner/restaurants/${restaurantId}/availability`, {
-      method: 'PUT',
-      body: JSON.stringify({ isOpen }),
-    }),
-
-  ownerMenu: (restaurantId: string) =>
-    request<Page<MenuItem>>(`/api/owner/restaurants/${restaurantId}/menu-items?page=1&pageSize=100`),
-
-  createMenuItem: (restaurantId: string, name: string, price: number) =>
-    request<MenuItem>(`/api/owner/restaurants/${restaurantId}/menu-items`, {
-      method: 'POST',
-      body: JSON.stringify({ name, price }),
-    }),
-
-  setMenuItemAvailability: (restaurantId: string, itemId: string, isAvailable: boolean) =>
-    request<MenuItem>(`/api/owner/restaurants/${restaurantId}/menu-items/${itemId}/availability`, {
-      method: 'PUT',
-      body: JSON.stringify({ isAvailable }),
-    }),
-
-  deleteMenuItem: (restaurantId: string, itemId: string) =>
-    request<void>(`/api/owner/restaurants/${restaurantId}/menu-items/${itemId}`, {
-      method: 'DELETE',
-    }),
+  adminRestaurants: () => request<AdminRestaurant[]>('/api/admin/restaurants'),
+  adminCreateRestaurant: (ownerEmail: string, restaurant: Omit<Restaurant, 'id' | 'isOpen' | 'isActive' | 'logoUrl'>) =>
+    request<Restaurant>('/api/admin/restaurants', { method: 'POST', body: JSON.stringify({ ownerEmail, restaurant }) }),
+  adminSetRestaurantActive: (restaurantId: string, isActive: boolean) =>
+    request<AdminRestaurant>(`/api/admin/restaurants/${restaurantId}/active`, { method: 'PUT', body: JSON.stringify({ isActive }) }),
 }
