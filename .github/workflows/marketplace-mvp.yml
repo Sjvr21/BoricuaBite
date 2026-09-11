@@ -49,6 +49,9 @@ jobs:
             git push origin HEAD:feature/marketplace-mvp
           fi
 
+      - name: Run .NET tests
+        run: dotnet test backend/BoricuaBite.sln --no-restore --configuration Release
+
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
