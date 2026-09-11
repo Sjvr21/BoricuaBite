@@ -2,6 +2,7 @@ using System.Security.Claims;
 using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
 using BoricuaBite.Api.Endpoints;
+using BoricuaBite.Api.Identity;
 using BoricuaBite.Application.Authentication;
 using BoricuaBite.Application.Restaurants;
 using BoricuaBite.Application.Catalog;
