@@ -2,6 +2,10 @@
 
 BoricuaBite follows a feature-branch workflow with pull requests and code review.
 
+Follow [the security requirements](SECURITY.md) for every change. Real database
+credentials, authentication tokens, database backups and customer data must never
+be committed. Use user secrets locally and deployment secret storage in production.
+
 ## Branches
 
 - `main` contains stable releases.

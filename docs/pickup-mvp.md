@@ -17,10 +17,14 @@ orders at the business; there are no delivery addresses, drivers, or delivery fe
 
 ## Next implementation stages
 
-1. PostgreSQL persistence and ASP.NET Identity registration/login for customers
-   and business owners, including verified account ownership.
-2. Authorized restaurant and menu management endpoints. Derive acting account
-   identifiers from authentication; verify restaurant ownership on every write.
+1. Implemented: PostgreSQL mappings/migration for accounts, restaurants and menu
+   items; ASP.NET Identity registration/login; authenticated restaurant ownership
+   and profile/availability management. See [local setup](local-development.md).
+   Local PostgreSQL signup/login and restaurant persistence were verified.
+   Email verification delivery remains pending.
+2. Next: authorized menu management endpoints and public restaurant browsing.
+   Derive acting account identifiers from authentication and verify restaurant
+   ownership on every write, as the restaurant endpoints already do.
 3. Order endpoints that load current menu items from storage, calculate prices
    on the server, enforce customer/owner permissions, and handle concurrent status
    updates and duplicate submissions.
@@ -29,6 +33,7 @@ orders at the business; there are no delivery addresses, drivers, or delivery fe
 5. Decide pay-at-pickup versus online payment, then implement taxes, final totals,
    payment handling where applicable, and notifications.
 
-Account identifiers in the domain are references, not authentication or permission
-checks. No account registration, database, or ordering API is implemented yet.
+Account identifiers in the domain are references. Authentication and restaurant
+ownership checks now happen in the API/service layers. Order persistence and
+ordering endpoints are not implemented yet.
 Subtotal excludes taxes, tips, and fees and is not a final payment amount.

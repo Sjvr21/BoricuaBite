@@ -1,41 +1,70 @@
+using System.Security.Claims;
+using System.Threading.RateLimiting;
+using BoricuaBite.Api.Endpoints;
+using BoricuaBite.Application.Restaurants;
+using BoricuaBite.Infrastructure.Identity;
+using BoricuaBite.Infrastructure.Persistence;
+using Microsoft.AspNetCore.Authentication.BearerToken;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
+builder.Services.AddProblemDetails();
+builder.Services.AddDbContext<BoricuaBiteDbContext>(options => options.UseNpgsql(
+    builder.Configuration.GetConnectionString("BoricuaBite")
+        ?? throw new InvalidOperationException("Set ConnectionStrings:BoricuaBite with user-secrets or an environment variable.")));
+builder.Services.AddScoped<IRestaurantService, RestaurantService>();
+builder.Services.AddIdentityApiEndpoints<ApplicationUser>(options =>
+{
+    options.User.RequireUniqueEmail = true;
+    options.Password.RequiredLength = 12;
+    options.Lockout.MaxFailedAccessAttempts = 5;
+    options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
+}).AddEntityFrameworkStores<BoricuaBiteDbContext>();
+builder.Services.Configure<BearerTokenOptions>(IdentityConstants.BearerScheme, options =>
+{
+    options.BearerTokenExpiration = TimeSpan.FromMinutes(15);
+    options.RefreshTokenExpiration = TimeSpan.FromDays(7);
+});
+builder.Services.AddAuthorizationBuilder().AddPolicy("ApiBearer", policy =>
+{
+    policy.AddAuthenticationSchemes(IdentityConstants.BearerScheme);
+    policy.RequireAuthenticatedUser();
+    policy.RequireAssertion(context => Guid.TryParse(
+        context.User.FindFirstValue(ClaimTypes.NameIdentifier), out var id) && id != Guid.Empty);
+});
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddPolicy("authentication", context => RateLimitPartition.GetFixedWindowLimiter(
+        context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 20,
+            Window = TimeSpan.FromMinutes(1),
+            QueueLimit = 0
+        }));
+});
 
 var app = builder.Build();
-
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
-    app.MapOpenApi();
-}
-
+app.UseExceptionHandler();
 app.UseHttpsRedirection();
+app.UseAuthentication();
+app.UseAuthorization();
+app.UseRateLimiter();
 
-var summaries = new[]
-{
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
+if (app.Environment.IsDevelopment()) app.MapOpenApi();
 
-app.MapGet("/weatherforecast", () =>
+app.MapGroup("/api/auth").RequireRateLimiting("authentication").MapIdentityApi<ApplicationUser>();
+app.MapGet("/api/account", async (ClaimsPrincipal principal, UserManager<ApplicationUser> users) =>
 {
-    var forecast =  Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
-})
-.WithName("GetWeatherForecast");
+    var user = await users.GetUserAsync(principal);
+    return user is null ? Results.Unauthorized() : Results.Ok(new { user.Id, user.Email });
+}).RequireAuthorization("ApiBearer");
+app.MapRestaurantEndpoints();
 
 app.Run();
 
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}
+public partial class Program { }

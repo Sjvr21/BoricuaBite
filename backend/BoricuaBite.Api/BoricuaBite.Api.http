@@ -1,6 +1,71 @@
-@BoricuaBite.Api_HostAddress = http://localhost:5181
+@host = https://localhost:7144
+# Paste tokens and restaurant ID from the responses below. Do not commit real tokens.
+@accessToken = REPLACE_WITH_ACCESS_TOKEN
+@refreshToken = REPLACE_WITH_REFRESH_TOKEN
+@restaurantId = REPLACE_WITH_RESTAURANT_ID
 
-GET {{BoricuaBite.Api_HostAddress}}/weatherforecast/
-Accept: application/json
+### Register a customer/owner account
+POST {{host}}/api/auth/register
+Content-Type: application/json
 
-###
+{
+  "email": "owner@example.com",
+  "password": "LocalDevelopment!12345"
+}
+
+### Log in and copy accessToken and refreshToken from the response
+POST {{host}}/api/auth/login?useCookies=false
+Content-Type: application/json
+
+{
+  "email": "owner@example.com",
+  "password": "LocalDevelopment!12345"
+}
+
+### Read the signed-in account
+GET {{host}}/api/account
+Authorization: Bearer {{accessToken}}
+
+### Create a restaurant (starts closed)
+POST {{host}}/api/owner/restaurants
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "name": "Local Kitchen",
+  "description": "Puerto Rican food for pickup",
+  "phoneNumber": "787-555-0123",
+  "address": {
+    "addressLine1": "123 Main Street",
+    "addressLine2": null,
+    "city": "Vega Baja",
+    "stateOrTerritory": "Puerto Rico",
+    "postalCode": "00693",
+    "country": "US"
+  }
+}
+
+### List your restaurants
+GET {{host}}/api/owner/restaurants
+Authorization: Bearer {{accessToken}}
+
+### Read your restaurant
+GET {{host}}/api/owner/restaurants/{{restaurantId}}
+Authorization: Bearer {{accessToken}}
+
+### Open your restaurant
+PUT {{host}}/api/owner/restaurants/{{restaurantId}}/availability
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "isOpen": true
+}
+
+### Renew your tokens
+POST {{host}}/api/auth/refresh
+Content-Type: application/json
+
+{
+  "refreshToken": "{{refreshToken}}"
+}

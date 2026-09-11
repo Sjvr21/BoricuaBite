@@ -8,35 +8,36 @@
 - [x] Create Restaurant entity
 - [ ] Add repository documentation
 - [ ] Add automated build workflow
-- [ ] Add testing projects
+- [x] Add testing projects
 
 ## Phase 2: Domain Model
 
-- [ ] Address value object
-- [ ] Restaurant ownership
+- [x] Address value object
+- [x] Restaurant ownership
 - [ ] Business hours
 - [ ] Restaurant images
 - [ ] Menu categories
-- [ ] Menu items
+- [x] Menu items
 - [ ] Customization options
-- [ ] Orders and order items
+- [x] Orders and order items
 - [ ] Payments
 - [ ] Reviews
 - [ ] Favorites
 
 ## Phase 3: Persistence
 
-- [ ] PostgreSQL
-- [ ] Entity Framework Core
-- [ ] Entity configurations
-- [ ] Migrations
+- [x] PostgreSQL provider configuration and local live database verification
+- [x] Entity Framework Core
+- [x] Account, restaurant and menu item configurations
+- [x] Initial accounts and restaurants migration
+- [ ] Order persistence and configuration
 - [ ] Seed data
 - [ ] Integration testing database
 
 ## Phase 4: Authentication and Authorization
 
-- [ ] ASP.NET Core Identity
-- [ ] JWT authentication
+- [x] ASP.NET Core Identity
+- [x] Identity bearer authentication (opaque tokens; see ADR-003)
 - [ ] Role authorization
 - [ ] Email confirmation
 - [ ] Password reset
@@ -46,10 +47,10 @@
 ## Phase 5: Restaurant Management
 
 - [ ] Admin restaurant management
-- [ ] Owner account assignment
-- [ ] Owner dashboard API
+- [x] Authenticated owner account assignment
+- [x] Owner restaurant profile API
 - [ ] Menu management
-- [ ] Availability management
+- [x] Restaurant open/closed availability management
 - [ ] Business hours management
 
 ## Phase 6: Customer Ordering

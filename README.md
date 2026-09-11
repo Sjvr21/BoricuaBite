@@ -32,7 +32,7 @@ Frontend
 
 Authentication
 - ASP.NET Identity
-- JWT
+- Identity bearer tokens (see [authentication decision](docs/decisions/ADR-003-account-authentication.md))
 - Google OAuth
 
 Payments
@@ -44,3 +44,9 @@ Email
 ## Project Status
 
 🚧 Currently under development.
+
+Account registration, login, token refresh, and owner-scoped restaurant setup
+are implemented in the backend, with PostgreSQL persistence and migrations.
+The React frontend and customer ordering API are still planned.
+
+See [local setup and API usage](docs/local-development.md) to run this milestone.
