@@ -49,13 +49,13 @@
 - [ ] Admin restaurant management
 - [x] Authenticated owner account assignment
 - [x] Owner restaurant profile API
-- [ ] Menu management
+- [x] Menu item management (create, edit, availability, soft delete)
 - [x] Restaurant open/closed availability management
 - [ ] Business hours management
 
 ## Phase 6: Customer Ordering
 
-- [ ] Restaurant browsing and search
+- [x] Restaurant browsing and search
 - [ ] Favorites
 - [ ] Cart
 - [ ] Order placement

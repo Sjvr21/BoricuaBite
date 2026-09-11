@@ -22,9 +22,11 @@ orders at the business; there are no delivery addresses, drivers, or delivery fe
    and profile/availability management. See [local setup](local-development.md).
    Local PostgreSQL signup/login and restaurant persistence were verified.
    Email verification delivery remains pending.
-2. Next: authorized menu management endpoints and public restaurant browsing.
-   Derive acting account identifiers from authentication and verify restaurant
-   ownership on every write, as the restaurant endpoints already do.
+2. Implemented: authorized menu management endpoints and public restaurant
+   browsing with search, city/open-status filters and pagination. Menu writes
+   verify authenticated ownership and the item's restaurant. Unavailable items
+   remain visible as sold out; deleted items and inactive/deleted/unowned
+   restaurants are excluded from public browsing.
 3. Order endpoints that load current menu items from storage, calculate prices
    on the server, enforce customer/owner permissions, and handle concurrent status
    updates and duplicate submissions.

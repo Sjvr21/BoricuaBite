@@ -47,6 +47,8 @@ Email
 
 Account registration, login, token refresh, and owner-scoped restaurant setup
 are implemented in the backend, with PostgreSQL persistence and migrations.
-The React frontend and customer ordering API are still planned.
+Owners can also manage menu items, and customers can browse restaurants and menus
+with search, city/open-status filters and pagination. The React frontend and
+customer ordering API are still planned.
 
 See [local setup and API usage](docs/local-development.md) to run this milestone.

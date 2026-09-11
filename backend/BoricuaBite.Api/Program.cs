@@ -2,6 +2,8 @@ using System.Security.Claims;
 using System.Threading.RateLimiting;
 using BoricuaBite.Api.Endpoints;
 using BoricuaBite.Application.Restaurants;
+using BoricuaBite.Application.Catalog;
+using BoricuaBite.Application.Menus;
 using BoricuaBite.Infrastructure.Identity;
 using BoricuaBite.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authentication.BearerToken;
@@ -16,6 +18,8 @@ builder.Services.AddDbContext<BoricuaBiteDbContext>(options => options.UseNpgsql
     builder.Configuration.GetConnectionString("BoricuaBite")
         ?? throw new InvalidOperationException("Set ConnectionStrings:BoricuaBite with user-secrets or an environment variable.")));
 builder.Services.AddScoped<IRestaurantService, RestaurantService>();
+builder.Services.AddScoped<IMenuService, MenuService>();
+builder.Services.AddScoped<ICatalogService, CatalogService>();
 builder.Services.AddIdentityApiEndpoints<ApplicationUser>(options =>
 {
     options.User.RequireUniqueEmail = true;
@@ -64,6 +68,8 @@ app.MapGet("/api/account", async (ClaimsPrincipal principal, UserManager<Applica
     return user is null ? Results.Unauthorized() : Results.Ok(new { user.Id, user.Email });
 }).RequireAuthorization("ApiBearer");
 app.MapRestaurantEndpoints();
+app.MapMenuEndpoints();
+app.MapCatalogEndpoints();
 
 app.Run();
 
