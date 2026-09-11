@@ -44,11 +44,12 @@ public interface IOrderService
     Task<IReadOnlyList<OrderResponse>> ListCustomerAsync(Guid customerId, CancellationToken ct);
     Task<IReadOnlyList<OrderResponse>> ListOwnerAsync(Guid ownerId, Guid? restaurantId, CancellationToken ct);
     Task<OrderResponse?> UpdateOwnerStatusAsync(Guid ownerId, Guid orderId, MarketplaceOrderStatus status, CancellationToken ct);
-    Task<OrderResponse?> MarkPaidByCheckoutSessionAsync(string sessionId, CancellationToken ct);
+    Task<OrderResponse?> MarkPaidByCheckoutSessionAsync(string sessionId, string? paymentIntentId, CancellationToken ct);
 }
 
 public interface ICheckoutProvider
 {
     bool IsConfigured { get; }
     Task<CheckoutSessionResult> CreateOrderCheckoutAsync(MarketplaceOrder order, Restaurant restaurant, string customerEmail, CancellationToken ct);
+    Task RefundAsync(string paymentIntentId, CancellationToken ct);
 }
