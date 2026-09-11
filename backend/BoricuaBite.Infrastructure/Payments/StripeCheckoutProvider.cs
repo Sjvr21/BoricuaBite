@@ -16,7 +16,7 @@ public sealed class StripeCheckoutProvider(HttpClient http, IConfiguration confi
     public async Task<CheckoutSessionResult> CreateOrderCheckoutAsync(
         MarketplaceOrder order, Restaurant restaurant, string customerEmail, CancellationToken ct)
     {
-        if (!IsConfigured) throw new InvalidOperationException("Stripe:SecretKey is not configured.");
+        EnsureConfigured();
         if (string.IsNullOrWhiteSpace(restaurant.StripeConnectedAccountId))
             throw new InvalidOperationException("Restaurant has no Stripe connected account.");
 
@@ -29,6 +29,7 @@ public sealed class StripeCheckoutProvider(HttpClient http, IConfiguration confi
             new("customer_email", customerEmail),
             new("client_reference_id", order.Id.ToString()),
             new("metadata[order_id]", order.Id.ToString()),
+            new("payment_intent_data[metadata][order_id]", order.Id.ToString()),
             new("payment_intent_data[transfer_data][destination]", restaurant.StripeConnectedAccountId),
             new("payment_intent_data[application_fee_amount]", platformAmount.ToString()),
             new("line_items[0][price_data][currency]", "usd"),
@@ -54,7 +55,32 @@ public sealed class StripeCheckoutProvider(HttpClient http, IConfiguration confi
             fields.Add(new($"line_items[{index}][quantity]", "1"));
         }
 
-        using var request = new HttpRequestMessage(HttpMethod.Post, "https://api.stripe.com/v1/checkout/sessions")
+        var root = await SendFormAsync("https://api.stripe.com/v1/checkout/sessions", fields, ct);
+        var id = root.GetProperty("id").GetString();
+        var url = root.GetProperty("url").GetString();
+        if (string.IsNullOrWhiteSpace(id) || string.IsNullOrWhiteSpace(url))
+            throw new InvalidOperationException("Stripe did not return a checkout session URL.");
+
+        return new CheckoutSessionResult(id, url);
+    }
+
+    public async Task RefundAsync(string paymentIntentId, CancellationToken ct)
+    {
+        EnsureConfigured();
+        if (string.IsNullOrWhiteSpace(paymentIntentId))
+            throw new ArgumentException("Stripe payment intent id is required.", nameof(paymentIntentId));
+
+        await SendFormAsync("https://api.stripe.com/v1/refunds",
+        [
+            new("payment_intent", paymentIntentId.Trim()),
+            new("refund_application_fee", "true"),
+            new("reverse_transfer", "true")
+        ], ct);
+    }
+
+    private async Task<JsonElement> SendFormAsync(string url, IEnumerable<KeyValuePair<string, string>> fields, CancellationToken ct)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, url)
         {
             Content = new FormUrlEncodedContent(fields)
         };
@@ -63,16 +89,15 @@ public sealed class StripeCheckoutProvider(HttpClient http, IConfiguration confi
         using var response = await http.SendAsync(request, ct);
         var json = await response.Content.ReadAsStringAsync(ct);
         if (!response.IsSuccessStatusCode)
-            throw new InvalidOperationException($"Stripe Checkout failed: {json}");
+            throw new InvalidOperationException($"Stripe request failed: {json}");
 
         using var document = JsonDocument.Parse(json);
-        var root = document.RootElement;
-        var id = root.GetProperty("id").GetString();
-        var url = root.GetProperty("url").GetString();
-        if (string.IsNullOrWhiteSpace(id) || string.IsNullOrWhiteSpace(url))
-            throw new InvalidOperationException("Stripe did not return a checkout session URL.");
+        return document.RootElement.Clone();
+    }
 
-        return new CheckoutSessionResult(id, url);
+    private void EnsureConfigured()
+    {
+        if (!IsConfigured) throw new InvalidOperationException("Stripe:SecretKey is not configured.");
     }
 
     private static long ToCents(decimal amount) => checked((long)decimal.Round(amount * 100m, 0, MidpointRounding.AwayFromZero));
