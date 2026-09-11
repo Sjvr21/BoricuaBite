@@ -32,13 +32,14 @@ public static class AuthSecurityEndpoints
             db.LoginChallenges.Add(loginChallenge);
             await db.SaveChangesAsync(ct);
 
+            var mayExposeDevelopmentCode = environment.IsDevelopment() || environment.IsEnvironment("Testing");
             if (email.IsConfigured)
             {
                 await email.SendAsync(user.Email!, "Your BoricuaBite sign-in code",
                     $"Your BoricuaBite verification code is {code}. It expires in 10 minutes.",
                     $"<h2>BoricuaBite sign-in</h2><p>Your verification code is:</p><p style=\"font-size:28px;font-weight:700;letter-spacing:6px\">{code}</p><p>This code expires in 10 minutes. If you did not try to sign in, you can ignore this email.</p>", ct);
             }
-            else if (!environment.IsDevelopment())
+            else if (!mayExposeDevelopmentCode)
             {
                 loginChallenge.Consume(DateTime.UtcNow);
                 await db.SaveChangesAsync(ct);
@@ -50,7 +51,7 @@ public static class AuthSecurityEndpoints
                 challengeId = loginChallenge.Id,
                 expiresInSeconds = 600,
                 destination = MaskEmail(user.Email!),
-                developmentCode = !email.IsConfigured && environment.IsDevelopment() ? code : null
+                developmentCode = !email.IsConfigured && mayExposeDevelopmentCode ? code : null
             });
         });
 
