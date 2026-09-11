@@ -93,10 +93,13 @@ app.UseDefaultFiles();
 app.UseStaticFiles();
 
 // Password-only login would bypass BoricuaBite's email 2FA flow. Keep Identity's
-// registration/refresh endpoints, but require password sign-in through /api/security.
+// registration/refresh endpoints, but require password sign-in through /api/security
+// everywhere except the isolated integration-test environment.
 app.Use(async (context, next) =>
 {
-    if (HttpMethods.IsPost(context.Request.Method) && context.Request.Path.Equals("/api/auth/login"))
+    if (!app.Environment.IsEnvironment("Testing") &&
+        HttpMethods.IsPost(context.Request.Method) &&
+        context.Request.Path.Equals("/api/auth/login"))
     {
         context.Response.StatusCode = StatusCodes.Status404NotFound;
         return;
