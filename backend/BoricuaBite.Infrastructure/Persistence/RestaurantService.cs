@@ -56,6 +56,8 @@ public sealed class RestaurantService(BoricuaBiteDbContext db) : IRestaurantServ
         var restaurant = await db.Restaurants
             .SingleOrDefaultAsync(x => x.Id == restaurantId && x.OwnerId == ownerId, cancellationToken);
         if (restaurant is null) return null;
+        if (isOpen && (!restaurant.IsActive || !restaurant.IsPublished || restaurant.SubscriptionStatus != RestaurantSubscriptionStatus.Active))
+            throw new InvalidOperationException("The restaurant must be active, published, and subscribed before it can accept orders.");
         restaurant.IsOpen = isOpen;
         restaurant.UpdatedAtUtc = DateTime.UtcNow;
         await db.SaveChangesAsync(cancellationToken);
@@ -71,12 +73,27 @@ public sealed class RestaurantService(BoricuaBiteDbContext db) : IRestaurantServ
         if (!isActive) restaurant.IsOpen = false;
         restaurant.UpdatedAtUtc = DateTime.UtcNow;
         await db.SaveChangesAsync(cancellationToken);
+        return await AdminResponseAsync(restaurant, cancellationToken);
+    }
 
+    public async Task<AdminRestaurantResponse?> SetSubscriptionAsync(Guid restaurantId, RestaurantSubscriptionUpdate update, CancellationToken cancellationToken)
+    {
+        var restaurant = await db.Restaurants.SingleOrDefaultAsync(x => x.Id == restaurantId, cancellationToken);
+        if (restaurant is null || restaurant.OwnerId is null) return null;
+
+        restaurant.StripeConnectedAccountId = string.IsNullOrWhiteSpace(update.StripeConnectedAccountId) ? null : update.StripeConnectedAccountId.Trim();
+        restaurant.StripeSubscriptionId = string.IsNullOrWhiteSpace(update.StripeSubscriptionId) ? null : update.StripeSubscriptionId.Trim();
+        restaurant.SetSubscriptionStatus(update.Status);
+        await db.SaveChangesAsync(cancellationToken);
+        return await AdminResponseAsync(restaurant, cancellationToken);
+    }
+
+    private async Task<AdminRestaurantResponse> AdminResponseAsync(Restaurant restaurant, CancellationToken cancellationToken)
+    {
         var ownerEmail = await db.Users.AsNoTracking()
-            .Where(x => x.Id == restaurant.OwnerId.Value)
+            .Where(x => x.Id == restaurant.OwnerId!.Value)
             .Select(x => x.Email)
             .SingleAsync(cancellationToken);
-
         return ToAdminResponse(restaurant, ownerEmail ?? string.Empty);
     }
 
@@ -86,13 +103,18 @@ public sealed class RestaurantService(BoricuaBiteDbContext db) : IRestaurantServ
         restaurant.Description = details.Description.Trim();
         restaurant.PhoneNumber = details.PhoneNumber.Trim();
         restaurant.Address = details.Address.ToDomain();
+        restaurant.LogoUrl = string.IsNullOrWhiteSpace(details.LogoUrl) ? null : details.LogoUrl.Trim();
+        restaurant.CoverImageUrl = string.IsNullOrWhiteSpace(details.CoverImageUrl) ? null : details.CoverImageUrl.Trim();
     }
 
     private static RestaurantResponse ToResponse(Restaurant restaurant) => new(
         restaurant.Id, restaurant.Name, restaurant.Description, restaurant.PhoneNumber,
-        restaurant.Address, restaurant.IsOpen, restaurant.IsActive);
+        restaurant.Address, restaurant.LogoUrl, restaurant.CoverImageUrl, restaurant.IsOpen,
+        restaurant.IsPublished, restaurant.IsActive, restaurant.SubscriptionStatus);
 
     private static AdminRestaurantResponse ToAdminResponse(Restaurant restaurant, string ownerEmail) => new(
         restaurant.Id, restaurant.Name, restaurant.Description, restaurant.PhoneNumber,
-        restaurant.Address, restaurant.IsOpen, restaurant.IsActive, ownerEmail);
+        restaurant.Address, restaurant.LogoUrl, restaurant.CoverImageUrl, restaurant.IsOpen,
+        restaurant.IsPublished, restaurant.IsActive, restaurant.SubscriptionStatus, ownerEmail,
+        restaurant.StripeConnectedAccountId, restaurant.StripeSubscriptionId);
 }
