@@ -9,11 +9,11 @@ public static class ReviewEndpoints
     public static void MapReviewEndpoints(this IEndpointRouteBuilder app)
     {
         app.MapGet("/api/restaurants/{restaurantId:guid}/reviews", async (
-            Guid restaurantId, int page, int pageSize, IReviewService reviews, CancellationToken ct) =>
+            Guid restaurantId, int? page, int? pageSize, IReviewService reviews, CancellationToken ct) =>
         {
-            var pageRequest = PageRequest.Create(page, pageSize);
-            if (pageRequest is null) return Results.BadRequest(new { error = "Invalid pagination." });
-            return Results.Ok(await reviews.ListAsync(restaurantId, pageRequest, ct));
+            var errors = RequestValidation.PageErrors(page, pageSize);
+            if (errors.Count > 0) return Results.ValidationProblem(errors);
+            return Results.Ok(await reviews.ListAsync(restaurantId, new PageRequest(page ?? 1, pageSize ?? 20), ct));
         }).WithTags("Reviews");
 
         app.MapGet("/api/restaurants/{restaurantId:guid}/reviews/summary", async (
