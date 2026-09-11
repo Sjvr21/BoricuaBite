@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using BoricuaBite.Application.Catalog;
 using BoricuaBite.Application.Common;
 using BoricuaBite.Application.Menus;
@@ -15,6 +16,14 @@ namespace BoricuaBite.Api.Tests;
 public class MenuAndCatalogTests
 {
     private const string Password = "TestOnly!Password123";
+    private static readonly JsonSerializerOptions Json = CreateJsonOptions();
+
+    private static JsonSerializerOptions CreateJsonOptions()
+    {
+        var options = new JsonSerializerOptions(JsonSerializerDefaults.Web);
+        options.Converters.Add(new JsonStringEnumConverter());
+        return options;
+    }
 
     private static async Task RegisterAndLoginAsync(HttpClient client, string email)
     {
@@ -49,7 +58,7 @@ public class MenuAndCatalogTests
             restaurant = Details(name, city)
         });
         Assert.Equal(HttpStatusCode.Created, created.StatusCode);
-        var restaurant = (await created.Content.ReadFromJsonAsync<RestaurantResponse>())!;
+        var restaurant = (await created.Content.ReadFromJsonAsync<RestaurantResponse>(Json))!;
         Assert.Equal(HttpStatusCode.OK, (await admin.PutAsJsonAsync($"/api/admin/restaurants/{restaurant.Id}/subscription", new
         {
             status = "Active",
@@ -110,7 +119,7 @@ public class MenuAndCatalogTests
             paymentMethod = "PayAtStore"
         });
         Assert.Equal(HttpStatusCode.Created, created.StatusCode);
-        var order = (await created.Content.ReadFromJsonAsync<OrderResponse>())!;
+        var order = (await created.Content.ReadFromJsonAsync<OrderResponse>(Json))!;
         Assert.Equal(20m, order.Subtotal);
         Assert.Equal(2m, order.TaxAmount);
         Assert.Equal(2m, order.ServiceFee);
@@ -125,7 +134,7 @@ public class MenuAndCatalogTests
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         }
 
-        var history = (await customer.GetFromJsonAsync<OrderResponse[]>("/api/orders/my"))!;
+        var history = (await customer.GetFromJsonAsync<OrderResponse[]>("/api/orders/my", Json))!;
         var completed = Assert.Single(history);
         Assert.Equal(MarketplaceOrderStatus.Completed, completed.Status);
         Assert.Equal(OrderPaymentStatus.Paid, completed.PaymentStatus);
@@ -148,7 +157,7 @@ public class MenuAndCatalogTests
             items = new[] { new { menuItemId = item.Id, quantity = 1 } },
             paymentMethod = "PayAtStore"
         });
-        var order = (await created.Content.ReadFromJsonAsync<OrderResponse>())!;
+        var order = (await created.Content.ReadFromJsonAsync<OrderResponse>(Json))!;
 
         Assert.Equal(HttpStatusCode.BadRequest,
             (await customer.PostAsJsonAsync("/api/reviews", new { orderId = order.Id, rating = 5, comment = "Great" })).StatusCode);
@@ -194,7 +203,7 @@ public class MenuAndCatalogTests
             items = new[] { new { menuItemId = firstItem.Id, quantity = 1 } },
             paymentMethod = "PayAtStore"
         });
-        var order = (await orderResponse.Content.ReadFromJsonAsync<OrderResponse>())!;
+        var order = (await orderResponse.Content.ReadFromJsonAsync<OrderResponse>(Json))!;
         foreach (var status in new[] { "Accepted", "Preparing", "ReadyForPickup", "Completed" })
             (await firstOwner.PutAsJsonAsync($"/api/owner/orders/{order.Id}/status", new { status })).EnsureSuccessStatusCode();
         (await customer.PostAsJsonAsync("/api/reviews", new { orderId = order.Id, rating = 5, comment = "Best" })).EnsureSuccessStatusCode();
