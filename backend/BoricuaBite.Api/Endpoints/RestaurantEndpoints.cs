@@ -20,14 +20,6 @@ public static class RestaurantEndpoints
             return restaurant is null ? Results.NotFound() : Results.Ok(restaurant);
         });
 
-        group.MapPost("/", async (RestaurantDetails details, ClaimsPrincipal user, IRestaurantService service, CancellationToken ct) =>
-        {
-            var errors = Validate(details);
-            if (errors.Count > 0) return Results.ValidationProblem(errors);
-            var restaurant = await service.CreateAsync(OwnerId(user), details, ct);
-            return Results.Created($"/api/owner/restaurants/{restaurant.Id}", restaurant);
-        });
-
         group.MapPut("/{id:guid}", async (Guid id, RestaurantDetails details, ClaimsPrincipal user, IRestaurantService service, CancellationToken ct) =>
         {
             var errors = Validate(details);
@@ -39,14 +31,21 @@ public static class RestaurantEndpoints
         group.MapPut("/{id:guid}/availability", async (Guid id, RestaurantAvailability availability,
             ClaimsPrincipal user, IRestaurantService service, CancellationToken ct) =>
         {
-            var restaurant = await service.SetAvailabilityAsync(OwnerId(user), id, availability.IsOpen, ct);
-            return restaurant is null ? Results.NotFound() : Results.Ok(restaurant);
+            try
+            {
+                var restaurant = await service.SetAvailabilityAsync(OwnerId(user), id, availability.IsOpen, ct);
+                return restaurant is null ? Results.NotFound() : Results.Ok(restaurant);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
         });
     }
 
     private static Guid OwnerId(ClaimsPrincipal user) => Guid.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
-    private static Dictionary<string, string[]> Validate(RestaurantDetails details)
+    internal static Dictionary<string, string[]> Validate(RestaurantDetails details)
     {
         var errors = new Dictionary<string, string[]>();
         ValidateObject(details, "", errors);

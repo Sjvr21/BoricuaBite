@@ -3,6 +3,7 @@
 @accessToken = REPLACE_WITH_ACCESS_TOKEN
 @refreshToken = REPLACE_WITH_REFRESH_TOKEN
 @restaurantId = REPLACE_WITH_RESTAURANT_ID
+@itemId = REPLACE_WITH_MENU_ITEM_ID
 
 ### Register a customer/owner account
 POST {{host}}/api/auth/register
@@ -69,3 +70,52 @@ Content-Type: application/json
 {
   "refreshToken": "{{refreshToken}}"
 }
+
+### Add a dish (copy its ID from the response)
+POST {{host}}/api/owner/restaurants/{{restaurantId}}/menu-items
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "name": "Mofongo con pollo",
+  "price": 14.50
+}
+
+### List your menu
+GET {{host}}/api/owner/restaurants/{{restaurantId}}/menu-items?page=1&pageSize=20
+Authorization: Bearer {{accessToken}}
+
+### Edit a dish
+PUT {{host}}/api/owner/restaurants/{{restaurantId}}/menu-items/{{itemId}}
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "name": "Mofongo con pollo",
+  "price": 15.00
+}
+
+### Mark a dish sold out
+PUT {{host}}/api/owner/restaurants/{{restaurantId}}/menu-items/{{itemId}}/availability
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "isAvailable": false
+}
+
+### Browse public restaurants (no login needed)
+GET {{host}}/api/restaurants?page=1&pageSize=20
+
+### Find open restaurants in Vega Baja
+GET {{host}}/api/restaurants?city=Vega%20Baja&isOpen=true
+
+### View a public restaurant
+GET {{host}}/api/restaurants/{{restaurantId}}
+
+### View its public menu
+GET {{host}}/api/restaurants/{{restaurantId}}/menu?page=1&pageSize=20
+
+### Remove a dish from the menu
+DELETE {{host}}/api/owner/restaurants/{{restaurantId}}/menu-items/{{itemId}}
+Authorization: Bearer {{accessToken}}

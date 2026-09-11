@@ -1,0 +1,168 @@
+import type {
+  Account,
+  AdminRestaurant,
+  AuthResponse,
+  MarketplaceOrderStatus,
+  MenuItem,
+  Order,
+  OrderPaymentMethod,
+  Page,
+  Restaurant,
+  RestaurantSubscriptionStatus,
+  Review,
+  ReviewSummary,
+} from './types'
+
+let accessToken = ''
+
+export function setAccessToken(token: string) {
+  accessToken = token
+}
+
+async function request<T>(url: string, options: RequestInit = {}): Promise<T> {
+  const headers = new Headers(options.headers)
+  if (!headers.has('Content-Type') && options.body && !(options.body instanceof FormData)) {
+    headers.set('Content-Type', 'application/json')
+  }
+  if (accessToken) headers.set('Authorization', `Bearer ${accessToken}`)
+
+  const response = await fetch(url, { ...options, headers })
+  if (!response.ok) {
+    const text = await response.text()
+    let message = text || `${response.status} ${response.statusText}`
+    try {
+      const parsed = JSON.parse(text) as { error?: string; title?: string }
+      message = parsed.error ?? parsed.title ?? message
+    } catch {
+      // Keep the raw response.
+    }
+    throw new Error(message)
+  }
+
+  if (response.status === 204) return undefined as T
+  return response.json() as Promise<T>
+}
+
+export const api = {
+  register: (email: string, password: string) =>
+    request<void>('/api/auth/register', { method: 'POST', body: JSON.stringify({ email, password }) }),
+
+  login: (email: string, password: string) =>
+    request<AuthResponse>('/api/auth/login?useCookies=false', { method: 'POST', body: JSON.stringify({ email, password }) }),
+
+  account: () => request<Account>('/api/account'),
+
+  browseRestaurants: (search = '', city = '', isOpen?: boolean) => {
+    const params = new URLSearchParams({ page: '1', pageSize: '50' })
+    if (search.trim()) params.set('search', search.trim())
+    if (city.trim()) params.set('city', city.trim())
+    if (isOpen !== undefined) params.set('isOpen', String(isOpen))
+    return request<Page<Restaurant>>(`/api/restaurants?${params}`)
+  },
+
+  publicMenu: (restaurantId: string) =>
+    request<Page<MenuItem>>(`/api/restaurants/${restaurantId}/menu?page=1&pageSize=100`),
+
+  publicReviews: (restaurantId: string) =>
+    request<Page<Review>>(`/api/restaurants/${restaurantId}/reviews?page=1&pageSize=50`),
+
+  reviewSummary: (restaurantId: string) =>
+    request<ReviewSummary>(`/api/restaurants/${restaurantId}/reviews/summary`),
+
+  createOrder: (restaurantId: string, items: { menuItemId: string; quantity: number }[], paymentMethod: OrderPaymentMethod) =>
+    request<Order>('/api/orders', {
+      method: 'POST',
+      body: JSON.stringify({ restaurantId, items, paymentMethod }),
+    }),
+
+  customerOrders: () => request<Order[]>('/api/orders/my'),
+
+  createReview: (orderId: string, rating: number, comment: string) =>
+    request<Review>('/api/reviews', {
+      method: 'POST',
+      body: JSON.stringify({ orderId, rating, comment }),
+    }),
+
+  ownerRestaurants: () => request<Restaurant[]>('/api/owner/restaurants'),
+
+  updateRestaurant: (restaurantId: string, restaurant: Omit<Restaurant, 'id' | 'isOpen' | 'isPublished' | 'isActive' | 'subscriptionStatus' | 'averageRating' | 'reviewCount'>) =>
+    request<Restaurant>(`/api/owner/restaurants/${restaurantId}`, {
+      method: 'PUT',
+      body: JSON.stringify(restaurant),
+    }),
+
+  setRestaurantAvailability: (restaurantId: string, isOpen: boolean) =>
+    request<Restaurant>(`/api/owner/restaurants/${restaurantId}/availability`, {
+      method: 'PUT',
+      body: JSON.stringify({ isOpen }),
+    }),
+
+  uploadRestaurantMedia: async (restaurantId: string, file: File) => {
+    const form = new FormData()
+    form.append('file', file)
+    return request<{ url: string }>(`/api/owner/restaurants/${restaurantId}/media`, {
+      method: 'POST',
+      body: form,
+    })
+  },
+
+  ownerMenu: (restaurantId: string) =>
+    request<Page<MenuItem>>(`/api/owner/restaurants/${restaurantId}/menu-items?page=1&pageSize=100`),
+
+  createMenuItem: (restaurantId: string, name: string, price: number, description = '', imageUrl?: string | null) =>
+    request<MenuItem>(`/api/owner/restaurants/${restaurantId}/menu-items`, {
+      method: 'POST',
+      body: JSON.stringify({ name, price, description, imageUrl }),
+    }),
+
+  updateMenuItem: (restaurantId: string, itemId: string, item: Pick<MenuItem, 'name' | 'price' | 'description' | 'imageUrl'>) =>
+    request<MenuItem>(`/api/owner/restaurants/${restaurantId}/menu-items/${itemId}`, {
+      method: 'PUT',
+      body: JSON.stringify(item),
+    }),
+
+  setMenuItemAvailability: (restaurantId: string, itemId: string, isAvailable: boolean) =>
+    request<MenuItem>(`/api/owner/restaurants/${restaurantId}/menu-items/${itemId}/availability`, {
+      method: 'PUT',
+      body: JSON.stringify({ isAvailable }),
+    }),
+
+  deleteMenuItem: (restaurantId: string, itemId: string) =>
+    request<void>(`/api/owner/restaurants/${restaurantId}/menu-items/${itemId}`, { method: 'DELETE' }),
+
+  ownerOrders: (restaurantId?: string) => {
+    const suffix = restaurantId ? `?restaurantId=${encodeURIComponent(restaurantId)}` : ''
+    return request<Order[]>(`/api/owner/orders${suffix}`)
+  },
+
+  setOrderStatus: (orderId: string, status: MarketplaceOrderStatus) =>
+    request<Order>(`/api/owner/orders/${orderId}/status`, {
+      method: 'PUT',
+      body: JSON.stringify({ status }),
+    }),
+
+  adminRestaurants: () => request<AdminRestaurant[]>('/api/admin/restaurants'),
+
+  adminCreateRestaurant: (ownerEmail: string, restaurant: Omit<Restaurant, 'id' | 'isOpen' | 'isPublished' | 'isActive' | 'subscriptionStatus' | 'averageRating' | 'reviewCount'>) =>
+    request<Restaurant>('/api/admin/restaurants', {
+      method: 'POST',
+      body: JSON.stringify({ ownerEmail, restaurant }),
+    }),
+
+  adminSetRestaurantActive: (restaurantId: string, isActive: boolean) =>
+    request<AdminRestaurant>(`/api/admin/restaurants/${restaurantId}/active`, {
+      method: 'PUT',
+      body: JSON.stringify({ isActive }),
+    }),
+
+  adminSetSubscription: (
+    restaurantId: string,
+    status: RestaurantSubscriptionStatus,
+    stripeConnectedAccountId?: string | null,
+    stripeSubscriptionId?: string | null,
+  ) =>
+    request<AdminRestaurant>(`/api/admin/restaurants/${restaurantId}/subscription`, {
+      method: 'PUT',
+      body: JSON.stringify({ status, stripeConnectedAccountId, stripeSubscriptionId }),
+    }),
+}

@@ -111,9 +111,13 @@ for that login in `pg_hba.conf`; a fresh Homebrew cluster may use `trust` locall
 
 ## Current boundaries
 
+See [menu management and browsing](menu-and-browsing.md) for the new endpoints,
+filters, pagination and visibility rules. The HTTP request file includes examples.
+
 - These are backend endpoints; frontend signup and business dashboard screens
-  are still to be built. Menu items have database mappings but no management API
-  yet. Pickup orders remain domain models, without persistence or endpoints.
+  are still to be built. Menu management and public restaurant/menu browsing
+  endpoints are available. Pickup orders remain domain models, without persistence
+  or endpoints.
 - Identity issues protected opaque bearer tokens, **not JWTs**. Access tokens
   last 15 minutes; refresh tokens last 7 days. See the authentication decision.
   Owner and account endpoints require bearer authentication even if a caller
