@@ -21,18 +21,18 @@ public sealed class MenuService(BoricuaBiteDbContext db) : IMenuService
         var total = await query.CountAsync(ct);
         var items = await query.OrderBy(x => x.Name).ThenBy(x => x.Id)
             .Skip(page.Offset).Take(page.Size)
-            .Select(x => new MenuItemResponse(x.Id, x.Name, x.Price, x.IsAvailable)).ToListAsync(ct);
+            .Select(x => new MenuItemResponse(x.Id, x.Name, x.Description, x.ImageUrl, x.Price, x.IsAvailable)).ToListAsync(ct);
         return new(items, page.Number, page.Size, total);
     }
 
     public async Task<MenuItemResponse?> GetAsync(Guid ownerId, Guid restaurantId, Guid itemId, CancellationToken ct) =>
         await OwnedItems(ownerId, restaurantId).AsNoTracking().Where(x => x.Id == itemId)
-            .Select(x => new MenuItemResponse(x.Id, x.Name, x.Price, x.IsAvailable)).SingleOrDefaultAsync(ct);
+            .Select(x => new MenuItemResponse(x.Id, x.Name, x.Description, x.ImageUrl, x.Price, x.IsAvailable)).SingleOrDefaultAsync(ct);
 
     public async Task<MenuItemResponse?> CreateAsync(Guid ownerId, Guid restaurantId, MenuItemDetails details, CancellationToken ct)
     {
         if (!await OwnsAsync(ownerId, restaurantId, ct)) return null;
-        var item = new MenuItem(restaurantId, details.Name, details.Price!.Value);
+        var item = new MenuItem(restaurantId, details.Name, details.Price!.Value, details.Description, details.ImageUrl);
         db.MenuItems.Add(item);
         await db.SaveChangesAsync(ct);
         return ToResponse(item);
@@ -42,7 +42,7 @@ public sealed class MenuService(BoricuaBiteDbContext db) : IMenuService
     {
         var item = await OwnedItems(ownerId, restaurantId).SingleOrDefaultAsync(x => x.Id == itemId, ct);
         if (item is null) return null;
-        item.Update(details.Name, details.Price!.Value);
+        item.Update(details.Name, details.Price!.Value, details.Description, details.ImageUrl);
         await db.SaveChangesAsync(ct);
         return ToResponse(item);
     }
@@ -67,5 +67,5 @@ public sealed class MenuService(BoricuaBiteDbContext db) : IMenuService
         return true;
     }
 
-    private static MenuItemResponse ToResponse(MenuItem item) => new(item.Id, item.Name, item.Price, item.IsAvailable);
+    private static MenuItemResponse ToResponse(MenuItem item) => new(item.Id, item.Name, item.Description, item.ImageUrl, item.Price, item.IsAvailable);
 }
