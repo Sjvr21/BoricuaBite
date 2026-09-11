@@ -64,7 +64,9 @@ public sealed class BoricuaBiteDbContext(DbContextOptions<BoricuaBiteDbContext> 
         order.Property(x => x.Total).HasPrecision(12, 2);
         order.Property(x => x.Currency).HasMaxLength(3);
         order.Property(x => x.StripeCheckoutSessionId).HasMaxLength(255);
+        order.Property(x => x.StripePaymentIntentId).HasMaxLength(255);
         order.HasIndex(x => x.StripeCheckoutSessionId).IsUnique();
+        order.HasIndex(x => x.StripePaymentIntentId).IsUnique();
         order.HasOne<Restaurant>().WithMany().HasForeignKey(x => x.RestaurantId).OnDelete(DeleteBehavior.Restrict);
         order.HasOne<ApplicationUser>().WithMany().HasForeignKey(x => x.CustomerId).OnDelete(DeleteBehavior.Restrict);
         order.HasMany(x => x.Items).WithOne().HasForeignKey(x => x.OrderId).OnDelete(DeleteBehavior.Cascade);
