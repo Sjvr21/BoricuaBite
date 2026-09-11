@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>BoricuaBite Test UI</title>
+  <style>
+    body{font-family:system-ui,sans-serif;max-width:1000px;margin:auto;padding:24px;background:#111827;color:#f9fafb}section{background:#1f2937;border:1px solid #374151;border-radius:12px;padding:18px;margin:16px 0}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px}input,textarea,button{box-sizing:border-box;width:100%;padding:10px;border-radius:8px;border:1px solid #4b5563;background:#111827;color:white}button{background:#2563eb;cursor:pointer;font-weight:600}.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.row button{width:auto}.card{border:1px solid #4b5563;border-radius:8px;padding:12px;margin-top:10px}.muted{color:#94a3b8}.bad{color:#fca5a5}pre{white-space:pre-wrap;word-break:break-word;background:#0b1220;padding:12px;border-radius:8px;max-height:250px;overflow:auto}label{display:grid;gap:5px}
+  </style>
+</head>
+<body>
+  <h1>BoricuaBite — API Test UI</h1>
+  <p class="muted">A temporary frontend for testing the real backend.</p>
+
+  <section>
+    <h2>Authentication</h2>
+    <div class="grid">
+      <label>Email<input id="email" type="email"></label>
+      <label>Password<input id="password" type="password"></label>
+    </div>
+    <div class="row"><button id="registerBtn">Register</button><button id="loginBtn">Login</button><button id="accountBtn">Check account</button></div>
+    <p id="authStatus" class="muted">Not logged in.</p>
+  </section>
+
+  <section>
+    <h2>Owner Restaurants</h2>
+    <div class="grid">
+      <label>Name<input id="rName"></label><label>Phone<input id="rPhone"></label>
+      <label>Address<input id="rAddress"></label><label>City<input id="rCity"></label>
+      <label>State/Territory<input id="rState" value="Puerto Rico"></label><label>Postal Code<input id="rPostal"></label>
+      <label>Country<input id="rCountry" value="US"></label>
+    </div>
+    <label>Description<textarea id="rDescription"></textarea></label>
+    <div class="row"><button id="createRestaurantBtn">Create restaurant</button><button id="loadRestaurantsBtn">Load my restaurants</button></div>
+    <div id="restaurants"></div>
+  </section>
+
+  <section>
+    <h2>Selected Restaurant Menu</h2>
+    <p>Restaurant ID: <span id="selectedId" class="muted">none</span></p>
+    <div class="grid"><label>Dish<input id="itemName"></label><label>Price<input id="itemPrice" type="number" step="0.01"></label></div>
+    <div class="row"><button id="addItemBtn">Add dish</button><button id="loadMenuBtn">Load menu</button></div>
+    <div id="menu"></div>
+  </section>
+
+  <section>
+    <h2>Public Catalog</h2>
+    <div class="grid"><label>Search<input id="search"></label><label>City<input id="city"></label></div>
+    <div class="row"><button id="browseBtn">Browse</button></div>
+    <div id="catalog"></div>
+  </section>
+
+  <section><h2>API Log</h2><pre id="log">Ready.</pre></section>
+  <script src="/app.js"></script>
+</body>
+</html>
