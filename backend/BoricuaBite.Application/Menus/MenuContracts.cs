@@ -5,7 +5,9 @@ namespace BoricuaBite.Application.Menus;
 
 public sealed record MenuItemDetails(
     [property: Required, StringLength(150)] string Name,
-    [property: Required] decimal? Price) : IValidatableObject
+    [property: Required] decimal? Price,
+    [property: StringLength(1000)] string? Description = null,
+    [property: StringLength(2048)] string? ImageUrl = null) : IValidatableObject
 {
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
@@ -15,7 +17,7 @@ public sealed record MenuItemDetails(
 }
 
 public sealed record MenuItemAvailability([property: Required] bool? IsAvailable);
-public sealed record MenuItemResponse(Guid Id, string Name, decimal Price, bool IsAvailable)
+public sealed record MenuItemResponse(Guid Id, string Name, string Description, string? ImageUrl, decimal Price, bool IsAvailable)
 {
     public string Currency => "USD";
 }
