@@ -69,6 +69,18 @@ export const api = {
       body: JSON.stringify({ challengeId, code }),
     }),
 
+  forgotPassword: (email: string) =>
+    request<{ message: string; developmentResetCode?: string | null }>('/api/security/password/forgot', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    }),
+
+  resetPassword: (email: string, resetCode: string, newPassword: string) =>
+    request<void>('/api/security/password/reset', {
+      method: 'POST',
+      body: JSON.stringify({ email, resetCode, newPassword }),
+    }),
+
   googleSignIn: (credential: string) =>
     request<AuthResponse>('/api/security/google', {
       method: 'POST',
