@@ -23,8 +23,10 @@ public sealed class OrderService(
         var restaurant = await db.Restaurants.SingleOrDefaultAsync(x => x.Id == request.RestaurantId, ct)
             ?? throw new InvalidOperationException("Restaurant was not found.");
 
+        var subscriptionAllowsOrders = restaurant.SubscriptionStatus is
+            RestaurantSubscriptionStatus.Active or RestaurantSubscriptionStatus.PastDue;
         if (!restaurant.IsActive || !restaurant.IsPublished || !restaurant.IsOpen || restaurant.OwnerId is null ||
-            restaurant.SubscriptionStatus != RestaurantSubscriptionStatus.Active)
+            !subscriptionAllowsOrders)
             throw new InvalidOperationException("This restaurant is not currently accepting marketplace orders.");
 
         var grouped = request.Items.GroupBy(x => x.MenuItemId)
