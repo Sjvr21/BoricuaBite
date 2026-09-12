@@ -78,14 +78,46 @@ public sealed class StripeCheckoutProvider(HttpClient http, IConfiguration confi
         ], ct);
     }
 
-    private async Task<JsonElement> SendFormAsync(string url, IEnumerable<KeyValuePair<string, string>> fields, CancellationToken ct)
+    public async Task<bool> ReverseTransferForChargeAsync(string chargeId, string idempotencyKey, CancellationToken ct)
+    {
+        EnsureConfigured();
+        if (string.IsNullOrWhiteSpace(chargeId))
+            throw new ArgumentException("Stripe charge id is required.", nameof(chargeId));
+
+        var charge = await GetAsync($"https://api.stripe.com/v1/charges/{Uri.EscapeDataString(chargeId.Trim())}", ct);
+        var transferId = charge.TryGetProperty("transfer", out var transfer) && transfer.ValueKind == JsonValueKind.String
+            ? transfer.GetString()
+            : null;
+        if (string.IsNullOrWhiteSpace(transferId)) return false;
+
+        await SendFormAsync(
+            $"https://api.stripe.com/v1/transfers/{Uri.EscapeDataString(transferId)}/reversals",
+            [], ct, idempotencyKey);
+        return true;
+    }
+
+    private async Task<JsonElement> GetAsync(string url, CancellationToken ct)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, url);
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", secretKey);
+        return await SendAsync(request, ct);
+    }
+
+    private async Task<JsonElement> SendFormAsync(string url, IEnumerable<KeyValuePair<string, string>> fields,
+        CancellationToken ct, string? idempotencyKey = null)
     {
         using var request = new HttpRequestMessage(HttpMethod.Post, url)
         {
             Content = new FormUrlEncodedContent(fields)
         };
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", secretKey);
+        if (!string.IsNullOrWhiteSpace(idempotencyKey))
+            request.Headers.TryAddWithoutValidation("Idempotency-Key", idempotencyKey);
+        return await SendAsync(request, ct);
+    }
 
+    private async Task<JsonElement> SendAsync(HttpRequestMessage request, CancellationToken ct)
+    {
         using var response = await http.SendAsync(request, ct);
         var json = await response.Content.ReadAsStringAsync(ct);
         if (!response.IsSuccessStatusCode)

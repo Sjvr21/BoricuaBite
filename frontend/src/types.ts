@@ -34,6 +34,23 @@ export type AdminRestaurant = Restaurant & {
   isActive: boolean
 }
 
+export type RestaurantStripeStatus = {
+  connectedAccountId?: string | null
+  transfersActive: boolean
+  payoutsActive: boolean
+  isReady: boolean
+}
+
+export type RestaurantStripeSession = RestaurantStripeStatus & {
+  connectedAccountId: string
+  clientSecret: string
+  publishableKey: string
+}
+
+export type StripeRedirect = {
+  url: string
+}
+
 export type MenuItem = {
   id: string
   name: string

@@ -1,5 +1,6 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react'
 import { api } from '../api'
+import { StripeRestaurantPanel } from '../components/StripeRestaurantPanel'
 import type { Account, MarketplaceOrderStatus, MenuItem, Order, Restaurant } from '../types'
 
 export function OwnerDashboard({
@@ -110,13 +111,13 @@ export function OwnerDashboard({
       <div className="mb-8">
         <p className="text-sm font-bold text-orange-600">Signed in as {account.email}</p>
         <h1 className="text-4xl font-black">Restaurant Dashboard</h1>
-        <p className="mt-2 text-stone-600">Manage restaurant branding, menu, availability, and pickup orders.</p>
+        <p className="mt-2 text-stone-600">Manage restaurant branding, menu, Stripe payouts, membership, availability, and pickup orders.</p>
       </div>
 
       {restaurants.length === 0 ? (
         <section className="rounded-3xl border border-dashed border-stone-300 bg-white p-10 text-center">
           <h2 className="text-2xl font-black">No restaurant assigned yet</h2>
-          <p className="mt-2 text-stone-500">Your account can still order as a customer. Contact BoricuaBite to start a restaurant subscription and onboarding.</p>
+          <p className="mt-2 text-stone-500">Your account can still order as a customer. Contact BoricuaBite to have a restaurant listing assigned to this account.</p>
         </section>
       ) : (
         <div className="grid gap-6 lg:grid-cols-[300px_1fr]">
@@ -140,20 +141,33 @@ export function OwnerDashboard({
                   <div className="flex flex-wrap items-start justify-between gap-4">
                     <div className="flex items-center gap-4">
                       {profile.logoUrl ? <img src={profile.logoUrl} alt="" className="h-16 w-16 rounded-2xl object-cover" /> : <div className="h-16 w-16 rounded-2xl bg-stone-100" />}
-                      <div><h2 className="text-3xl font-black">{profile.name}</h2><p className="text-sm text-stone-500">Subscription: <strong>{profile.subscriptionStatus ?? 'Pending'}</strong></p></div>
+                      <div><h2 className="text-3xl font-black">{profile.name}</h2><p className="text-sm text-stone-500">Membership: <strong>{profile.subscriptionStatus ?? 'Pending'}</strong></p></div>
                     </div>
                     <button
-                      disabled={loading || profile.subscriptionStatus !== 'Active' || profile.isActive === false}
+                      disabled={loading || !['Active', 'PastDue'].includes(profile.subscriptionStatus ?? '') || profile.isActive === false}
                       onClick={() => void run(async () => { await api.setRestaurantAvailability(profile.id, !profile.isOpen); await refreshRestaurants() })}
                       className={`rounded-2xl px-5 py-3 font-black text-white disabled:bg-stone-300 ${profile.isOpen ? 'bg-stone-700' : 'bg-emerald-600'}`}
                     >
                       {profile.isOpen ? 'Close restaurant' : 'Open restaurant'}
                     </button>
                   </div>
-                  {profile.subscriptionStatus !== 'Active' && <p className="mt-4 rounded-xl bg-amber-50 p-3 text-sm font-semibold text-amber-800">You can prepare your page and menu now, but the restaurant will not appear in the public catalog or accept orders until the subscription is active.</p>}
+                  {profile.subscriptionStatus === 'Pending' && <p className="mt-4 rounded-xl bg-amber-50 p-3 text-sm font-semibold text-amber-800">Complete Stripe setup and start the 30-day free trial before the restaurant can appear publicly and accept orders.</p>}
+                  {profile.subscriptionStatus === 'Cancelled' && <p className="mt-4 rounded-xl bg-red-50 p-3 text-sm font-semibold text-red-700">This membership is cancelled. Start a new membership to restore marketplace access.</p>}
                   {profile.isActive === false && <p className="mt-4 rounded-xl bg-red-50 p-3 text-sm font-semibold text-red-700">This listing is suspended by BoricuaBite admin.</p>}
                 </div>
               </section>
+
+              <StripeRestaurantPanel
+                restaurant={profile}
+                loading={loading}
+                run={run}
+                onSubscriptionChanged={async () => {
+                  await refreshRestaurants()
+                  const refreshed = await api.ownerRestaurants()
+                  const current = refreshed.find(item => item.id === profile.id)
+                  if (current) setProfile(structuredClone(current))
+                }}
+              />
 
               <section className="rounded-3xl border border-stone-200 bg-white p-6">
                 <h2 className="text-2xl font-black">Restaurant profile</h2>

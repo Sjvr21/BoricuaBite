@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - feature/auth-email-google
+      - feature/stripe-connect-billing
   workflow_dispatch:
 
 permissions:
@@ -45,7 +46,7 @@ jobs:
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git add backend/BoricuaBite.Infrastructure/Persistence/Migrations
             git commit -m "Generate auth email Google migration"
-            git push origin HEAD:feature/auth-email-google
+            git push origin HEAD:${GITHUB_REF_NAME}
           fi
 
       - name: Run .NET tests

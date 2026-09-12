@@ -56,7 +56,9 @@ public sealed class RestaurantService(BoricuaBiteDbContext db) : IRestaurantServ
         var restaurant = await db.Restaurants
             .SingleOrDefaultAsync(x => x.Id == restaurantId && x.OwnerId == ownerId, cancellationToken);
         if (restaurant is null) return null;
-        if (isOpen && (!restaurant.IsActive || !restaurant.IsPublished || restaurant.SubscriptionStatus != RestaurantSubscriptionStatus.Active))
+        var subscriptionAllowsOrders = restaurant.SubscriptionStatus is
+            RestaurantSubscriptionStatus.Active or RestaurantSubscriptionStatus.PastDue;
+        if (isOpen && (!restaurant.IsActive || !restaurant.IsPublished || !subscriptionAllowsOrders))
             throw new InvalidOperationException("The restaurant must be active, published, and subscribed before it can accept orders.");
         restaurant.IsOpen = isOpen;
         restaurant.UpdatedAtUtc = DateTime.UtcNow;

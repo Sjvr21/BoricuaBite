@@ -7,10 +7,11 @@ namespace BoricuaBite.Api.Identity;
 
 public sealed class IdentityEmailSender(ITransactionalEmailSender emailSender) : IEmailSender<ApplicationUser>
 {
+    // BoricuaBite verifies control of the email address with its own emailed
+    // 6-digit code during password sign-in. Do not send Identity's separate
+    // confirmation-link email; it is redundant with the app's authentication flow.
     public Task SendConfirmationLinkAsync(ApplicationUser user, string email, string confirmationLink) =>
-        SendIfConfigured(email, "Confirm your BoricuaBite email",
-            $"Confirm your BoricuaBite email by opening this link: {confirmationLink}",
-            $"<h2>Confirm your BoricuaBite email</h2><p><a href=\"{WebUtility.HtmlEncode(confirmationLink)}\">Confirm email</a></p>");
+        Task.CompletedTask;
 
     public Task SendPasswordResetLinkAsync(ApplicationUser user, string email, string resetLink) =>
         SendIfConfigured(email, "Reset your BoricuaBite password",

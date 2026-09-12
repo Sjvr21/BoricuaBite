@@ -4,12 +4,14 @@ using System.Threading.RateLimiting;
 using BoricuaBite.Api.Endpoints;
 using BoricuaBite.Api.Identity;
 using BoricuaBite.Application.Authentication;
+using BoricuaBite.Application.Connect;
 using BoricuaBite.Application.Restaurants;
 using BoricuaBite.Application.Catalog;
 using BoricuaBite.Application.Menus;
 using BoricuaBite.Application.Notifications;
 using BoricuaBite.Application.Orders;
 using BoricuaBite.Application.Reviews;
+using BoricuaBite.Application.Subscriptions;
 using BoricuaBite.Infrastructure.Identity;
 using BoricuaBite.Infrastructure.Notifications;
 using BoricuaBite.Infrastructure.Payments;
@@ -35,10 +37,14 @@ builder.Services.AddScoped<IMenuService, MenuService>();
 builder.Services.AddScoped<ICatalogService, CatalogService>();
 builder.Services.AddScoped<IOrderService, OrderService>();
 builder.Services.AddScoped<IReviewService, ReviewService>();
+builder.Services.AddScoped<IRestaurantStripeService, RestaurantStripeService>();
+builder.Services.AddScoped<IRestaurantSubscriptionService, RestaurantSubscriptionService>();
 builder.Services.AddScoped<IGoogleIdentityValidator, GoogleIdentityValidator>();
 builder.Services.AddHttpClient<ITransactionalEmailSender, SendGridEmailSender>(client =>
     client.BaseAddress = new Uri("https://api.sendgrid.com/"));
 builder.Services.AddHttpClient<ICheckoutProvider, StripeCheckoutProvider>();
+builder.Services.AddHttpClient<IStripeConnectProvider, StripeConnectProvider>();
+builder.Services.AddHttpClient<ISubscriptionCheckoutProvider, StripeSubscriptionCheckoutProvider>();
 builder.Services.AddIdentityApiEndpoints<ApplicationUser>(options =>
 {
     options.User.RequireUniqueEmail = true;
@@ -136,6 +142,7 @@ app.MapCatalogEndpoints();
 app.MapOrderEndpoints();
 app.MapReviewEndpoints();
 app.MapMediaEndpoints();
+app.MapStripeOwnerEndpoints();
 app.MapStripeWebhookEndpoints();
 
 app.Run();

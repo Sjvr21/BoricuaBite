@@ -52,4 +52,5 @@ public interface ICheckoutProvider
     bool IsConfigured { get; }
     Task<CheckoutSessionResult> CreateOrderCheckoutAsync(MarketplaceOrder order, Restaurant restaurant, string customerEmail, CancellationToken ct);
     Task RefundAsync(string paymentIntentId, CancellationToken ct);
+    Task<bool> ReverseTransferForChargeAsync(string chargeId, string idempotencyKey, CancellationToken ct);
 }

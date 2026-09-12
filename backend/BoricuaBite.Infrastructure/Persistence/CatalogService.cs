@@ -10,7 +10,8 @@ public sealed class CatalogService(BoricuaBiteDbContext db) : ICatalogService
 {
     private IQueryable<Restaurant> Published => db.Restaurants.AsNoTracking()
         .Where(x => x.IsActive && x.IsPublished && x.OwnerId != null &&
-            x.SubscriptionStatus == RestaurantSubscriptionStatus.Active);
+            (x.SubscriptionStatus == RestaurantSubscriptionStatus.Active ||
+             x.SubscriptionStatus == RestaurantSubscriptionStatus.PastDue));
 
     public async Task<Page<PublicRestaurant>> BrowseAsync(string? search, string? city, bool? isOpen, PageRequest page, CancellationToken ct)
     {

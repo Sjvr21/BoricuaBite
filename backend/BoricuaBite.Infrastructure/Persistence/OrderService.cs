@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text;
+using BoricuaBite.Application.Connect;
 using BoricuaBite.Application.Notifications;
 using BoricuaBite.Application.Orders;
 using BoricuaBite.Domain.Entities;
@@ -13,6 +14,7 @@ public sealed class OrderService(
     BoricuaBiteDbContext db,
     IOptions<MarketplacePricingOptions> pricingOptions,
     ICheckoutProvider checkoutProvider,
+    IStripeConnectProvider stripeConnectProvider,
     ITransactionalEmailSender emailSender,
     ILogger<OrderService> logger) : IOrderService
 {
@@ -23,8 +25,10 @@ public sealed class OrderService(
         var restaurant = await db.Restaurants.SingleOrDefaultAsync(x => x.Id == request.RestaurantId, ct)
             ?? throw new InvalidOperationException("Restaurant was not found.");
 
+        var subscriptionAllowsOrders = restaurant.SubscriptionStatus is
+            RestaurantSubscriptionStatus.Active or RestaurantSubscriptionStatus.PastDue;
         if (!restaurant.IsActive || !restaurant.IsPublished || !restaurant.IsOpen || restaurant.OwnerId is null ||
-            restaurant.SubscriptionStatus != RestaurantSubscriptionStatus.Active)
+            !subscriptionAllowsOrders)
             throw new InvalidOperationException("This restaurant is not currently accepting marketplace orders.");
 
         var grouped = request.Items.GroupBy(x => x.MenuItemId)
@@ -46,12 +50,16 @@ public sealed class OrderService(
 
         if (request.PaymentMethod == OrderPaymentMethod.Online)
         {
-            if (!checkoutProvider.IsConfigured)
+            if (!checkoutProvider.IsConfigured || !stripeConnectProvider.IsConfigured)
                 throw new InvalidOperationException("Online checkout is not configured yet. Choose pay at store or configure Stripe.");
             if (string.IsNullOrWhiteSpace(restaurant.StripeConnectedAccountId))
                 throw new InvalidOperationException("This restaurant is not configured for online payouts yet.");
             if (string.IsNullOrWhiteSpace(customerEmail))
                 throw new InvalidOperationException("An email address is required for online checkout.");
+
+            var stripeStatus = await stripeConnectProvider.GetStatusAsync(restaurant.StripeConnectedAccountId, ct);
+            if (!stripeStatus.IsReady)
+                throw new InvalidOperationException("This restaurant has not completed Stripe payout verification yet.");
         }
 
         var order = new MarketplaceOrder(restaurant.Id, customerId, request.PaymentMethod,
