@@ -40,13 +40,15 @@ public class Restaurant : BaseEntity
     public void SetSubscriptionStatus(RestaurantSubscriptionStatus status)
     {
         SubscriptionStatus = status;
-        if (status is RestaurantSubscriptionStatus.Cancelled or RestaurantSubscriptionStatus.PastDue)
+        if (status == RestaurantSubscriptionStatus.Cancelled)
         {
             IsOpen = false;
             IsPublished = false;
         }
-        else if (status == RestaurantSubscriptionStatus.Active)
+        else if (status is RestaurantSubscriptionStatus.Active or RestaurantSubscriptionStatus.PastDue)
         {
+            // PastDue is a grace state while Stripe Smart Retries are still running.
+            // A terminal Stripe state maps to Cancelled and suspends marketplace access.
             IsPublished = true;
         }
         UpdatedAtUtc = DateTime.UtcNow;
