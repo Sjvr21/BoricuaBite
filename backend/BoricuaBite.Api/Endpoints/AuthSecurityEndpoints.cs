@@ -1,11 +1,13 @@
 using System.Security.Claims;
 using System.Security.Cryptography;
+using System.Text;
 using BoricuaBite.Application.Authentication;
 using BoricuaBite.Application.Notifications;
 using BoricuaBite.Domain.Entities;
 using BoricuaBite.Infrastructure.Identity;
 using BoricuaBite.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
 
 namespace BoricuaBite.Api.Endpoints;
@@ -78,6 +80,73 @@ public static class AuthSecurityEndpoints
             if (user is null || await users.IsLockedOutAsync(user)) return Results.Unauthorized();
             var principal = await signInManager.CreateUserPrincipalAsync(user);
             return Results.SignIn(principal, authenticationScheme: IdentityConstants.BearerScheme);
+        });
+
+        group.MapPost("/password/forgot", async (PasswordForgotRequest request, UserManager<ApplicationUser> users,
+            ITransactionalEmailSender email, IHostEnvironment environment, CancellationToken ct) =>
+        {
+            var address = request.Email.Trim();
+            var user = await users.FindByEmailAsync(address);
+            var mayExposeDevelopmentCode = environment.IsDevelopment() || environment.IsEnvironment("Testing");
+
+            if (user is null)
+            {
+                return Results.Ok(new
+                {
+                    message = "If an account exists for that email, a password reset code has been sent.",
+                    developmentResetCode = (string?)null
+                });
+            }
+
+            var token = await users.GeneratePasswordResetTokenAsync(user);
+            var resetCode = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token));
+
+            if (email.IsConfigured)
+            {
+                await email.SendAsync(user.Email!, "Reset your BoricuaBite password",
+                    $"Your BoricuaBite password reset code is {resetCode}. If you did not request this, you can ignore this email.",
+                    $"<h2>Reset your BoricuaBite password</h2><p>Copy this reset code into BoricuaBite:</p><p style=\"word-break:break-all;font-family:monospace;font-size:16px;font-weight:700\">{System.Net.WebUtility.HtmlEncode(resetCode)}</p><p>If you did not request a password reset, you can ignore this email.</p>", ct);
+            }
+            else if (!mayExposeDevelopmentCode)
+            {
+                return Results.Problem("Password reset email is not configured.", statusCode: StatusCodes.Status503ServiceUnavailable);
+            }
+
+            return Results.Ok(new
+            {
+                message = "If an account exists for that email, a password reset code has been sent.",
+                developmentResetCode = !email.IsConfigured && mayExposeDevelopmentCode ? resetCode : null
+            });
+        });
+
+        group.MapPost("/password/reset", async (PasswordResetRequest request, UserManager<ApplicationUser> users) =>
+        {
+            var user = await users.FindByEmailAsync(request.Email.Trim());
+            if (user is null)
+                return Results.BadRequest(new { error = "The password reset code is invalid or expired." });
+
+            string token;
+            try
+            {
+                token = Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(request.ResetCode.Trim()));
+            }
+            catch (FormatException)
+            {
+                return Results.BadRequest(new { error = "The password reset code is invalid or expired." });
+            }
+
+            var result = await users.ResetPasswordAsync(user, token, request.NewPassword);
+            if (!result.Succeeded)
+            {
+                var invalidToken = result.Errors.Any(x => string.Equals(x.Code, "InvalidToken", StringComparison.OrdinalIgnoreCase));
+                if (invalidToken)
+                    return Results.BadRequest(new { error = "The password reset code is invalid or expired." });
+
+                return Results.ValidationProblem(result.Errors.ToDictionary(x => x.Code, x => new[] { x.Description }));
+            }
+
+            await users.ResetAccessFailedCountAsync(user);
+            return Results.NoContent();
         });
 
         group.MapPost("/google", async (GoogleCredentialRequest request, IGoogleIdentityValidator google,
@@ -163,5 +232,7 @@ public static class AuthSecurityEndpoints
 
     public sealed record PasswordLoginStart(string Email, string Password);
     public sealed record PasswordLoginVerify(Guid ChallengeId, string Code);
+    public sealed record PasswordForgotRequest(string Email);
+    public sealed record PasswordResetRequest(string Email, string ResetCode, string NewPassword);
     public sealed record GoogleCredentialRequest(string Credential);
 }
