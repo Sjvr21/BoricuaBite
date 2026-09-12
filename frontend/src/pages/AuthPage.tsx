@@ -15,6 +15,8 @@ declare global {
   }
 }
 
+type Mode = 'login' | 'register' | 'forgot' | 'reset'
+
 export function AuthPage({
   onAuthenticated,
   loading,
@@ -26,15 +28,17 @@ export function AuthPage({
 }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [mode, setMode] = useState<'login' | 'register'>('login')
+  const [mode, setMode] = useState<Mode>('login')
   const [note, setNote] = useState('')
   const [challengeId, setChallengeId] = useState('')
   const [code, setCode] = useState('')
+  const [resetCode, setResetCode] = useState('')
+  const [newPassword, setNewPassword] = useState('')
   const googleButton = useRef<HTMLDivElement>(null)
   const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined
 
   useEffect(() => {
-    if (!googleClientId || !googleButton.current) return
+    if (!googleClientId || !googleButton.current || mode !== 'login' || challengeId) return
 
     const render = () => {
       if (!window.google || !googleButton.current) return
@@ -69,15 +73,37 @@ export function AuthPage({
     script.onload = render
     document.head.appendChild(script)
     return () => script.remove()
-  }, [googleClientId, onAuthenticated, run])
+  }, [googleClientId, onAuthenticated, run, mode, challengeId])
 
   async function submit(event: FormEvent) {
     event.preventDefault()
+
     if (mode === 'register') {
       await run(async () => {
         await api.register(email, password)
         setNote('Account created. Sign in with your password to receive the verification code.')
         setMode('login')
+      })
+      return
+    }
+
+    if (mode === 'forgot') {
+      await run(async () => {
+        const result = await api.forgotPassword(email)
+        setMode('reset')
+        setNote(`${result.message}${result.developmentResetCode ? ` Development reset code: ${result.developmentResetCode}` : ''}`)
+      })
+      return
+    }
+
+    if (mode === 'reset') {
+      await run(async () => {
+        await api.resetPassword(email, resetCode, newPassword)
+        setPassword('')
+        setNewPassword('')
+        setResetCode('')
+        setMode('login')
+        setNote('Password reset successfully. Sign in with your new password.')
       })
       return
     }
@@ -103,6 +129,13 @@ export function AuthPage({
     setNote('')
   }
 
+  function switchMode(next: Mode) {
+    resetChallenge()
+    setResetCode('')
+    setNewPassword('')
+    setMode(next)
+  }
+
   return (
     <main className="mx-auto grid min-h-[75vh] max-w-5xl items-center gap-10 px-5 py-12 md:grid-cols-2">
       <section>
@@ -114,15 +147,40 @@ export function AuthPage({
       </section>
 
       <div className="rounded-3xl border border-stone-200 bg-white p-7 shadow-xl">
-        {!challengeId && (
+        {!challengeId && mode !== 'reset' && mode !== 'forgot' && (
           <div className="mb-6 flex rounded-2xl bg-stone-100 p-1">
-            <button type="button" onClick={() => { setMode('login'); resetChallenge() }} className={`flex-1 rounded-xl py-2 text-sm font-bold ${mode === 'login' ? 'bg-white shadow-sm' : ''}`}>Sign in</button>
-            <button type="button" onClick={() => { setMode('register'); resetChallenge() }} className={`flex-1 rounded-xl py-2 text-sm font-bold ${mode === 'register' ? 'bg-white shadow-sm' : ''}`}>Create account</button>
+            <button type="button" onClick={() => switchMode('login')} className={`flex-1 rounded-xl py-2 text-sm font-bold ${mode === 'login' ? 'bg-white shadow-sm' : ''}`}>Sign in</button>
+            <button type="button" onClick={() => switchMode('register')} className={`flex-1 rounded-xl py-2 text-sm font-bold ${mode === 'register' ? 'bg-white shadow-sm' : ''}`}>Create account</button>
+          </div>
+        )}
+
+        {(mode === 'forgot' || mode === 'reset') && (
+          <div className="mb-5">
+            <button type="button" onClick={() => switchMode('login')} className="text-sm font-semibold text-stone-500 hover:text-stone-900">← Back to sign in</button>
+            <h2 className="mt-3 text-2xl font-black">{mode === 'forgot' ? 'Reset your password' : 'Choose a new password'}</h2>
           </div>
         )}
 
         <form onSubmit={submit}>
-          {!challengeId ? (
+          {mode === 'forgot' ? (
+            <>
+              <label className="mb-2 block text-sm font-bold">Email</label>
+              <input type="email" required value={email} onChange={event => setEmail(event.target.value)} className="w-full rounded-2xl border border-stone-200 px-4 py-3 outline-none focus:border-orange-400" />
+              <p className="mt-2 text-xs text-stone-500">We’ll email you a reset code if an account exists for this address.</p>
+            </>
+          ) : mode === 'reset' ? (
+            <>
+              <label className="mb-2 block text-sm font-bold">Email</label>
+              <input type="email" required value={email} onChange={event => setEmail(event.target.value)} className="mb-4 w-full rounded-2xl border border-stone-200 px-4 py-3 outline-none focus:border-orange-400" />
+
+              <label className="mb-2 block text-sm font-bold">Reset code</label>
+              <textarea required value={resetCode} onChange={event => setResetCode(event.target.value.trim())} rows={3} className="mb-4 w-full rounded-2xl border border-stone-200 px-4 py-3 font-mono text-sm outline-none focus:border-orange-400" />
+
+              <label className="mb-2 block text-sm font-bold">New password</label>
+              <input type="password" required minLength={12} value={newPassword} onChange={event => setNewPassword(event.target.value)} className="w-full rounded-2xl border border-stone-200 px-4 py-3 outline-none focus:border-orange-400" />
+              <p className="mt-2 text-xs text-stone-500">Use at least 12 characters with uppercase, lowercase, a number, and a symbol.</p>
+            </>
+          ) : !challengeId ? (
             <>
               <label className="mb-2 block text-sm font-bold">Email</label>
               <input type="email" required value={email} onChange={event => setEmail(event.target.value)} className="mb-4 w-full rounded-2xl border border-stone-200 px-4 py-3 outline-none focus:border-orange-400" />
@@ -130,6 +188,9 @@ export function AuthPage({
               <label className="mb-2 block text-sm font-bold">Password</label>
               <input type="password" required minLength={12} value={password} onChange={event => setPassword(event.target.value)} className="w-full rounded-2xl border border-stone-200 px-4 py-3 outline-none focus:border-orange-400" />
               {mode === 'register' && <p className="mt-2 text-xs text-stone-500">Use at least 12 characters with uppercase, lowercase, a number, and a symbol.</p>}
+              {mode === 'login' && (
+                <button type="button" onClick={() => switchMode('forgot')} className="mt-3 text-sm font-semibold text-orange-700 hover:text-orange-600">Forgot password?</button>
+              )}
             </>
           ) : (
             <>
@@ -143,7 +204,17 @@ export function AuthPage({
           {note && <p className="mt-3 text-sm text-emerald-700">{note}</p>}
 
           <button disabled={loading} className="mt-6 w-full rounded-2xl bg-orange-600 px-5 py-3 font-black text-white hover:bg-orange-500 disabled:opacity-60">
-            {loading ? 'Working...' : mode === 'register' ? 'Create account' : challengeId ? 'Verify & sign in' : 'Continue'}
+            {loading
+              ? 'Working...'
+              : mode === 'register'
+                ? 'Create account'
+                : mode === 'forgot'
+                  ? 'Send reset code'
+                  : mode === 'reset'
+                    ? 'Reset password'
+                    : challengeId
+                      ? 'Verify & sign in'
+                      : 'Continue'}
           </button>
         </form>
 
