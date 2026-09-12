@@ -162,23 +162,35 @@ public static class AuthSecurityEndpoints
             var user = await users.FindByLoginAsync(login.LoginProvider, login.ProviderKey);
             if (user is null)
             {
-                var sameEmail = await users.FindByEmailAsync(profile.Email);
-                if (sameEmail is not null)
-                    return Results.Conflict(new { error = "An account with this email already exists. Sign in with your password, then link Google from Security settings." });
-
-                user = new ApplicationUser
+                user = await users.FindByEmailAsync(profile.Email);
+                if (user is null)
                 {
-                    UserName = profile.Email,
-                    Email = profile.Email,
-                    EmailConfirmed = profile.EmailVerified
-                };
-                var created = await users.CreateAsync(user);
-                if (!created.Succeeded) return Results.ValidationProblem(created.Errors.ToDictionary(x => x.Code, x => new[] { x.Description }));
+                    user = new ApplicationUser
+                    {
+                        UserName = profile.Email,
+                        Email = profile.Email,
+                        EmailConfirmed = true
+                    };
+
+                    var created = await users.CreateAsync(user);
+                    if (!created.Succeeded)
+                        return Results.ValidationProblem(created.Errors.ToDictionary(x => x.Code, x => new[] { x.Description }));
+                }
+                else if (!user.EmailConfirmed)
+                {
+                    user.EmailConfirmed = true;
+                    var confirmed = await users.UpdateAsync(user);
+                    if (!confirmed.Succeeded)
+                        return Results.ValidationProblem(confirmed.Errors.ToDictionary(x => x.Code, x => new[] { x.Description }));
+                }
+
                 var linked = await users.AddLoginAsync(user, login);
-                if (!linked.Succeeded) return Results.ValidationProblem(linked.Errors.ToDictionary(x => x.Code, x => new[] { x.Description }));
+                if (!linked.Succeeded)
+                    return Results.ValidationProblem(linked.Errors.ToDictionary(x => x.Code, x => new[] { x.Description }));
             }
 
             if (await users.IsLockedOutAsync(user)) return Results.Unauthorized();
+            await users.ResetAccessFailedCountAsync(user);
             var principal = await signInManager.CreateUserPrincipalAsync(user);
             return Results.SignIn(principal, authenticationScheme: IdentityConstants.BearerScheme);
         });
