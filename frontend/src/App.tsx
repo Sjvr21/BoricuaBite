@@ -1,13 +1,15 @@
-import { useState } from 'react'
-import { api, setAccessToken } from './api'
-import type { Account } from './types'
+import { useCallback, useState } from 'react'
+import { setAccessToken } from './api'
+import type { Account, AuthResponse } from './types'
+import { api } from './api'
 import { AuthPage } from './pages/AuthPage'
 import { CatalogPage } from './pages/CatalogPage'
 import { OrdersPage } from './pages/OrdersPage'
 import { OwnerDashboard } from './pages/OwnerDashboard'
 import { AdminDashboard } from './pages/AdminDashboard'
+import { SecurityPage } from './pages/SecurityPage'
 
-type View = 'catalog' | 'auth' | 'orders' | 'owner' | 'admin'
+type View = 'catalog' | 'auth' | 'orders' | 'owner' | 'admin' | 'security'
 
 export default function App() {
   const [view, setView] = useState<View>('catalog')
@@ -15,7 +17,7 @@ export default function App() {
   const [message, setMessage] = useState('')
   const [loading, setLoading] = useState(false)
 
-  async function run(action: () => Promise<void>) {
+  const run = useCallback(async (action: () => Promise<void>) => {
     try {
       setLoading(true)
       setMessage('')
@@ -25,18 +27,15 @@ export default function App() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
 
-  async function login(email: string, password: string) {
-    await run(async () => {
-      const auth = await api.login(email, password)
-      setAccessToken(auth.accessToken)
-      const current = await api.account()
-      setAccount(current)
-      setView('catalog')
-      setMessage(`Signed in as ${current.email}`)
-    })
-  }
+  const onAuthenticated = useCallback(async (auth: AuthResponse) => {
+    setAccessToken(auth.accessToken)
+    const current = await api.account()
+    setAccount(current)
+    setView('catalog')
+    setMessage(`Signed in as ${current.email}`)
+  }, [])
 
   function logout() {
     setAccessToken('')
@@ -59,6 +58,7 @@ export default function App() {
             {account && <NavButton active={view === 'orders'} onClick={() => setView('orders')}>My Orders</NavButton>}
             {account && !account.isAdmin && <NavButton active={view === 'owner'} onClick={() => setView('owner')}>Restaurant Dashboard</NavButton>}
             {account?.isAdmin && <NavButton active={view === 'admin'} onClick={() => setView('admin')}>Admin</NavButton>}
+            {account && <NavButton active={view === 'security'} onClick={() => setView('security')}>Security</NavButton>}
             {account ? (
               <button onClick={logout} className="rounded-xl px-4 py-2 text-sm font-semibold text-stone-600 hover:bg-stone-100">Sign out</button>
             ) : (
@@ -81,10 +81,11 @@ export default function App() {
           onOrderCreated={() => setView('orders')}
         />
       )}
-      {view === 'auth' && <AuthPage onLogin={login} loading={loading} run={run} />}
+      {view === 'auth' && <AuthPage onAuthenticated={onAuthenticated} loading={loading} run={run} />}
       {view === 'orders' && account && <OrdersPage run={run} />}
       {view === 'owner' && account && !account.isAdmin && <OwnerDashboard account={account} run={run} loading={loading} />}
       {view === 'admin' && account?.isAdmin && <AdminDashboard account={account} run={run} loading={loading} />}
+      {view === 'security' && account && <SecurityPage account={account} run={run} />}
     </div>
   )
 }

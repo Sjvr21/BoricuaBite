@@ -31,8 +31,18 @@ async function request<T>(url: string, options: RequestInit = {}): Promise<T> {
     const text = await response.text()
     let message = text || `${response.status} ${response.statusText}`
     try {
-      const parsed = JSON.parse(text) as { error?: string; title?: string }
-      message = parsed.error ?? parsed.title ?? message
+      const parsed = JSON.parse(text) as {
+        error?: string
+        title?: string
+        detail?: string
+        errors?: Record<string, string[]>
+      }
+      const validationMessages = parsed.errors
+        ? Object.values(parsed.errors).flat().filter(Boolean)
+        : []
+      message = validationMessages.length > 0
+        ? validationMessages.join(' ')
+        : parsed.error ?? parsed.detail ?? parsed.title ?? message
     } catch {
       // Keep the raw response.
     }
@@ -47,8 +57,43 @@ export const api = {
   register: (email: string, password: string) =>
     request<void>('/api/auth/register', { method: 'POST', body: JSON.stringify({ email, password }) }),
 
-  login: (email: string, password: string) =>
-    request<AuthResponse>('/api/auth/login?useCookies=false', { method: 'POST', body: JSON.stringify({ email, password }) }),
+  startPasswordLogin: (email: string, password: string) =>
+    request<{ challengeId: string; expiresInSeconds: number; destination: string; developmentCode?: string | null }>('/api/security/password/start', {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+    }),
+
+  verifyPasswordLogin: (challengeId: string, code: string) =>
+    request<AuthResponse>('/api/security/password/verify', {
+      method: 'POST',
+      body: JSON.stringify({ challengeId, code }),
+    }),
+
+  forgotPassword: (email: string) =>
+    request<{ message: string; developmentResetCode?: string | null }>('/api/security/password/forgot', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    }),
+
+  resetPassword: (email: string, resetCode: string, newPassword: string) =>
+    request<void>('/api/security/password/reset', {
+      method: 'POST',
+      body: JSON.stringify({ email, resetCode, newPassword }),
+    }),
+
+  googleSignIn: (credential: string) =>
+    request<AuthResponse>('/api/security/google', {
+      method: 'POST',
+      body: JSON.stringify({ credential }),
+    }),
+
+  googleLink: (credential: string) =>
+    request<{ googleLinked: boolean }>('/api/security/google/link', {
+      method: 'POST',
+      body: JSON.stringify({ credential }),
+    }),
+
+  securityStatus: () => request<{ email2FaAvailable: boolean; googleAvailable: boolean; googleLinked: boolean }>('/api/security/status'),
 
   account: () => request<Account>('/api/account'),
 

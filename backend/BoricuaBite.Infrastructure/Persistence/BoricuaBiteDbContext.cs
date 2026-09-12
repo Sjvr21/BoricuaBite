@@ -14,6 +14,7 @@ public sealed class BoricuaBiteDbContext(DbContextOptions<BoricuaBiteDbContext> 
     public DbSet<MarketplaceOrder> MarketplaceOrders => Set<MarketplaceOrder>();
     public DbSet<MarketplaceOrderItem> MarketplaceOrderItems => Set<MarketplaceOrderItem>();
     public DbSet<RestaurantReview> RestaurantReviews => Set<RestaurantReview>();
+    public DbSet<LoginChallenge> LoginChallenges => Set<LoginChallenge>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -83,5 +84,12 @@ public sealed class BoricuaBiteDbContext(DbContextOptions<BoricuaBiteDbContext> 
         review.HasOne<Restaurant>().WithMany().HasForeignKey(x => x.RestaurantId).OnDelete(DeleteBehavior.Restrict);
         review.HasOne<ApplicationUser>().WithMany().HasForeignKey(x => x.CustomerId).OnDelete(DeleteBehavior.Restrict);
         review.HasOne<MarketplaceOrder>().WithOne().HasForeignKey<RestaurantReview>(x => x.OrderId).OnDelete(DeleteBehavior.Restrict);
+
+        var challenge = builder.Entity<LoginChallenge>();
+        challenge.HasQueryFilter(x => !x.IsDeleted);
+        challenge.Property(x => x.CodeSalt).HasMaxLength(32).IsRequired();
+        challenge.Property(x => x.CodeHash).HasMaxLength(64).IsRequired();
+        challenge.HasIndex(x => new { x.UserId, x.ExpiresAtUtc });
+        challenge.HasOne<ApplicationUser>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
     }
 }

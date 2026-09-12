@@ -1,6 +1,10 @@
+using System.Net;
+using System.Text;
+using BoricuaBite.Application.Notifications;
 using BoricuaBite.Application.Orders;
 using BoricuaBite.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace BoricuaBite.Infrastructure.Persistence;
@@ -8,7 +12,9 @@ namespace BoricuaBite.Infrastructure.Persistence;
 public sealed class OrderService(
     BoricuaBiteDbContext db,
     IOptions<MarketplacePricingOptions> pricingOptions,
-    ICheckoutProvider checkoutProvider) : IOrderService
+    ICheckoutProvider checkoutProvider,
+    ITransactionalEmailSender emailSender,
+    ILogger<OrderService> logger) : IOrderService
 {
     private readonly MarketplacePricingOptions pricing = pricingOptions.Value;
 
@@ -70,6 +76,11 @@ public sealed class OrderService(
                 throw;
             }
         }
+        else if (!string.IsNullOrWhiteSpace(customerEmail))
+        {
+            await TrySendOrderEmailAsync(customerEmail, restaurant.Name, order,
+                "Order received", "Your order has been placed and will be paid at the restaurant.", ct);
+        }
 
         return ToResponse(order, restaurant.Name, customerEmail, checkoutUrl);
     }
@@ -118,6 +129,22 @@ public sealed class OrderService(
         await db.SaveChangesAsync(ct);
         var restaurantName = await db.Restaurants.Where(x => x.Id == order.RestaurantId).Select(x => x.Name).SingleAsync(ct);
         var email = await db.Users.Where(x => x.Id == order.CustomerId).Select(x => x.Email).SingleOrDefaultAsync(ct);
+
+        if (!string.IsNullOrWhiteSpace(email))
+        {
+            var message = status switch
+            {
+                MarketplaceOrderStatus.Accepted => "The restaurant accepted your order.",
+                MarketplaceOrderStatus.Preparing => "Your food is being prepared.",
+                MarketplaceOrderStatus.ReadyForPickup => "Your order is ready for pickup.",
+                MarketplaceOrderStatus.Completed => "Your order is complete. You can now leave a verified review in BoricuaBite.",
+                MarketplaceOrderStatus.Rejected => "The restaurant rejected this order. Any completed online payment has been refunded.",
+                MarketplaceOrderStatus.Cancelled => "This order was cancelled. Any completed online payment has been refunded.",
+                _ => $"Your order status is now {status}."
+            };
+            await TrySendOrderEmailAsync(email, restaurantName, order, $"Order {status}", message, ct);
+        }
+
         return ToResponse(order, restaurantName, email);
     }
 
@@ -129,7 +156,43 @@ public sealed class OrderService(
         order.MarkPaid(paymentIntentId);
         await db.SaveChangesAsync(ct);
         var restaurantName = await db.Restaurants.Where(x => x.Id == order.RestaurantId).Select(x => x.Name).SingleAsync(ct);
-        return ToResponse(order, restaurantName, null);
+        var customerEmail = await db.Users.Where(x => x.Id == order.CustomerId).Select(x => x.Email).SingleOrDefaultAsync(ct);
+        if (!string.IsNullOrWhiteSpace(customerEmail))
+            await TrySendOrderEmailAsync(customerEmail, restaurantName, order, "Payment receipt", "Your online payment was confirmed.", ct);
+        return ToResponse(order, restaurantName, customerEmail);
+    }
+
+    private async Task TrySendOrderEmailAsync(string recipient, string restaurantName, MarketplaceOrder order,
+        string subjectPrefix, string intro, CancellationToken ct)
+    {
+        if (!emailSender.IsConfigured) return;
+        try
+        {
+            var plain = new StringBuilder()
+                .AppendLine(intro).AppendLine()
+                .AppendLine($"Restaurant: {restaurantName}")
+                .AppendLine($"Order: {order.Id}")
+                .AppendLine($"Status: {order.Status}")
+                .AppendLine();
+            var rows = new StringBuilder();
+            foreach (var item in order.Items)
+            {
+                plain.AppendLine($"{item.Quantity} x {item.Name} @ {item.UnitPrice:C} = {item.Subtotal:C}");
+                rows.Append($"<tr><td>{item.Quantity} × {WebUtility.HtmlEncode(item.Name)}</td><td style=\"text-align:right\">{item.Subtotal:C}</td></tr>");
+            }
+            plain.AppendLine().AppendLine($"Subtotal: {order.Subtotal:C}")
+                .AppendLine($"Tax: {order.TaxAmount:C}")
+                .AppendLine($"Service fee: {order.ServiceFee:C}")
+                .AppendLine($"Total: {order.Total:C}")
+                .AppendLine($"Payment: {order.PaymentMethod} / {order.PaymentStatus}");
+
+            var html = $"<h2>BoricuaBite</h2><p>{WebUtility.HtmlEncode(intro)}</p><p><strong>{WebUtility.HtmlEncode(restaurantName)}</strong><br>Order {order.Id}</p><table style=\"width:100%;max-width:560px\">{rows}</table><hr><p>Subtotal: <strong>{order.Subtotal:C}</strong><br>Tax: <strong>{order.TaxAmount:C}</strong><br>Service fee: <strong>{order.ServiceFee:C}</strong><br>Total: <strong>{order.Total:C}</strong><br>Payment: {order.PaymentMethod} / {order.PaymentStatus}</p>";
+            await emailSender.SendAsync(recipient, $"BoricuaBite — {subjectPrefix} #{order.Id.ToString()[..8]}", plain.ToString(), html, ct);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to send order email for {OrderId} to {Recipient}", order.Id, recipient);
+        }
     }
 
     private async Task<Dictionary<Guid, string>> RestaurantNames(IEnumerable<Guid> ids, CancellationToken ct)

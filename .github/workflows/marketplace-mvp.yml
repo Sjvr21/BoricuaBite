@@ -1,9 +1,9 @@
-name: Marketplace MVP validation
+name: Marketplace auth validation
 
 on:
   push:
     branches:
-      - feature/marketplace-mvp
+      - feature/auth-email-google
   workflow_dispatch:
 
 permissions:
@@ -13,7 +13,7 @@ jobs:
   validate:
     runs-on: ubuntu-latest
     env:
-      ConnectionStrings__BoricuaBite: Host=localhost;Port=5432;Database=boricuabite_design;Username=postgres;Password=design-only
+      ConnectionStrings__BoricuaBite: Host=localhost;Port=5432;Database=boricuabite_design;Username=postgres
 
     steps:
       - uses: actions/checkout@v4
@@ -33,19 +33,19 @@ jobs:
       - name: Restore dotnet tools
         run: dotnet tool restore
 
-      - name: Generate marketplace migration when missing
+      - name: Generate auth migration when missing
         shell: bash
         run: |
-          if ! find backend/BoricuaBite.Infrastructure/Persistence/Migrations -name '*_MarketplaceMvp.cs' | grep -q .; then
-            dotnet tool run dotnet-ef migrations add MarketplaceMvp \
+          if ! find backend/BoricuaBite.Infrastructure/Persistence/Migrations -name '*_AuthEmailGoogle.cs' | grep -q .; then
+            dotnet tool run dotnet-ef migrations add AuthEmailGoogle \
               --project backend/BoricuaBite.Infrastructure \
               --startup-project backend/BoricuaBite.Api \
               --output-dir Persistence/Migrations
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git add backend/BoricuaBite.Infrastructure/Persistence/Migrations
-            git commit -m "Generate marketplace MVP migration"
-            git push origin HEAD:feature/marketplace-mvp
+            git commit -m "Generate auth email Google migration"
+            git push origin HEAD:feature/auth-email-google
           fi
 
       - name: Run .NET tests
