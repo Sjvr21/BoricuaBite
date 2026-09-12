@@ -2,6 +2,10 @@
 **/bin/
 **/obj/
 
+# Node / frontend dependencies and build output
+**/node_modules/
+**/dist/
+
 # macOS
 .DS_Store
 **/.DS_Store
