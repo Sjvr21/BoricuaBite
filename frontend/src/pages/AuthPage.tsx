@@ -81,8 +81,10 @@ export function AuthPage({
     if (mode === 'register') {
       await run(async () => {
         await api.register(email, password)
-        setNote('Account created. Sign in with your password to receive the verification code.')
+        const challenge = await api.startPasswordLogin(email, password)
         setMode('login')
+        setChallengeId(challenge.challengeId)
+        setNote(`Account created. We sent a 6-digit code to ${challenge.destination}.${challenge.developmentCode ? ` Development code: ${challenge.developmentCode}` : ''}`)
       })
       return
     }
