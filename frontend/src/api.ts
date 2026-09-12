@@ -31,8 +31,18 @@ async function request<T>(url: string, options: RequestInit = {}): Promise<T> {
     const text = await response.text()
     let message = text || `${response.status} ${response.statusText}`
     try {
-      const parsed = JSON.parse(text) as { error?: string; title?: string; detail?: string }
-      message = parsed.error ?? parsed.detail ?? parsed.title ?? message
+      const parsed = JSON.parse(text) as {
+        error?: string
+        title?: string
+        detail?: string
+        errors?: Record<string, string[]>
+      }
+      const validationMessages = parsed.errors
+        ? Object.values(parsed.errors).flat().filter(Boolean)
+        : []
+      message = validationMessages.length > 0
+        ? validationMessages.join(' ')
+        : parsed.error ?? parsed.detail ?? parsed.title ?? message
     } catch {
       // Keep the raw response.
     }
